@@ -10,13 +10,20 @@ use glutin_winit::DisplayBuilder;
 use raw_window_handle::HasRawWindowHandle;
 use skia_safe::gpu::gl::FramebufferInfo;
 use skia_safe::gpu::BackendRenderTarget;
-use skia_safe::{Color, ColorType, Matrix, Paint, PaintStyle, Point, Rect, Surface};
+use skia_safe::{Color, ColorType, Matrix, Paint, PaintStyle, Point, Rect, Surface, Font, FontMgr, FontStyle};
 use skia_safe::{Color4f, Contains};
 use smallvec::SmallVec;
 use winit::dpi::PhysicalSize;
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopBuilder};
 use winit::window::{Window, WindowBuilder};
+
+mod view;
+mod presenter;
+mod model;
+
+use view::View;
+use presenter::Presenter;
 
 pub struct GlWindow {
     // XXX the surface must be dropped before the window.
@@ -117,17 +124,24 @@ impl Renderer {
         self.surface = create_surface(&mut self.gr_context, size, self.num_aa_samples);
     }
 
-    fn draw(&mut self, scale_factor: f64) {
+    fn render(&mut self, scale_factor: f64, view: &View) {
         self.t += 0.01f32;
         let canvas = self.surface.canvas();
         canvas.reset_matrix();
         canvas.scale((scale_factor as f32, scale_factor as f32));
-        canvas.clear(Color4f::new(0.0, 0.3, 0.8, 1.0));
+        canvas.clear(Color4f::new(0.0, 0.0, 0.0, 1.0));
 
-        let paint = Paint::new(Color4f::new(0.7, 0.3, 0.0, 1.0), None);
+        let paint = Paint::new(Color4f::new(1.0, 1.0, 1.0, 1.0), None);
 
         // canvas.draw_rect(Rect::from_xywh(32.0, 32.0, 64.0, 64.0), &paint);
         canvas.draw_circle((148.0 + (self.t * 8.0).cos() * 96.0, 148.0), 64.0, &paint);
+
+        let fm = FontMgr::new();
+        let font = Font::new(fm.match_family_style("Inconsolata", FontStyle::normal()).unwrap(), 72.0);
+
+        canvas.draw_str("Hello, world!", (200.0, 200.0), &font, &paint);
+
+        view.draw(canvas);
 
         self.gr_context.flush(None);
     }
@@ -202,6 +216,8 @@ fn main() -> anyhow::Result<()> {
             })
     });
 
+    let mut view = View::new(Presenter::new());
+
     let mut state = None;
     let mut renderer = None;
     event_loop.run(move |event, window_target, control_flow| {
@@ -273,12 +289,12 @@ fn main() -> anyhow::Result<()> {
                 WindowEvent::CloseRequested => {
                     control_flow.set_exit();
                 }
-                _ => (),
+                e => view.process_event(e),
             },
             Event::RedrawEventsCleared => {
                 if let Some((gl_context, gl_window)) = &state {
                     let renderer = renderer.as_mut().unwrap();
-                    renderer.draw(gl_window.window.scale_factor());
+                    renderer.render(gl_window.window.scale_factor(), &view);
                     gl_window.window.request_redraw();
                     gl_window.surface.swap_buffers(gl_context).unwrap();
                 }
