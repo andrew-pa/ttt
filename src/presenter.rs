@@ -1,4 +1,4 @@
-use crate::model::{Tree, ROOT_PARENT_ID};
+use crate::model::{Tree, ROOT_PARENT_ID, NodeId};
 
 pub struct Presenter {
     tree: Tree,
@@ -29,5 +29,29 @@ impl Presenter {
 
     pub fn model(&self) -> &Tree {
         &self.tree
+    }
+
+    pub fn insert_node_in_parent(&self, cur_node: NodeId) -> NodeId {
+        todo!()
+    }
+
+    pub fn insert_node(&self, cur_node: NodeId) -> NodeId {
+        todo!()
+    }
+
+    pub fn delete_node(&self, cur_node: NodeId) {
+        todo!()
+    }
+
+    pub fn copy_node(&self, cur_node: NodeId) {
+        todo!()
+    }
+
+    pub fn put_node(&self, cur_node: NodeId, consume: bool) {
+        todo!()
+    }
+
+    pub fn swap_node(&self, cur_node: NodeId, direction: isize) {
+        todo!()
     }
 }
