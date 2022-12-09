@@ -1,7 +1,8 @@
-use crate::model::{Tree, ROOT_PARENT_ID, NodeId};
+use crate::model::{NodeId, Tree, ROOT_PARENT_ID};
 
 pub struct Presenter {
     tree: Tree,
+    copy_stack: Vec<String>,
 }
 
 impl Presenter {
@@ -24,34 +25,52 @@ impl Presenter {
         tree.add_node("Leaf node 9".into(), c);
         tree.add_node("Leaf node 10".into(), root);
 
-        Presenter { tree }
+        Presenter {
+            tree,
+            copy_stack: Vec::new(),
+        }
     }
 
     pub fn model(&self) -> &Tree {
         &self.tree
     }
 
-    pub fn insert_node_in_parent(&self, cur_node: NodeId) -> NodeId {
-        todo!()
+    pub fn insert_node_in_parent(&mut self, cur_node: NodeId) -> Option<NodeId> {
+        if let Some(parent) = self.tree.node(cur_node).parent() {
+            Some(
+                self.tree
+                    .insert_node(String::from("new node"), parent, cur_node),
+            )
+        } else {
+            None
+        }
     }
 
-    pub fn insert_node(&self, cur_node: NodeId) -> NodeId {
-        todo!()
+    pub fn insert_node_as_child(&mut self, cur_node: NodeId) -> NodeId {
+        self.tree.add_node(String::from("new node"), cur_node)
     }
 
-    pub fn delete_node(&self, cur_node: NodeId) {
-        todo!()
+    pub fn delete_node(&mut self, cur_node: NodeId) {
+        if let Some(text) = self.tree.delete_node(cur_node) {
+            self.copy_stack.push(text);
+        }
     }
 
-    pub fn copy_node(&self, cur_node: NodeId) {
-        todo!()
+    pub fn copy_node(&mut self, cur_node: NodeId) {
+        self.copy_stack.push(self.tree.node(cur_node).text.clone());
     }
 
-    pub fn put_node(&self, cur_node: NodeId, consume: bool) {
-        todo!()
+    pub fn put_node(&mut self, cur_node: NodeId, consume: bool) {
+        if let Some(text) = if consume {
+            self.copy_stack.pop()
+        } else {
+            self.copy_stack.last().cloned()
+        } {
+            self.tree.add_node(text, cur_node);
+        }
     }
 
-    pub fn swap_node(&self, cur_node: NodeId, direction: isize) {
-        todo!()
+    pub fn swap_node(&mut self, cur_node: NodeId, direction: isize) {
+        self.tree.swap_node(cur_node, direction);
     }
 }

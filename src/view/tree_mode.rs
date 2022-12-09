@@ -1,4 +1,4 @@
-use super::{Mode, ViewState, insert_mode::InsertMode, edit_mode::EditMode};
+use super::{edit_mode::EditMode, insert_mode::InsertMode, Mode, ViewState};
 use crate::{model::ROOT_PARENT_ID, presenter::Presenter};
 use winit::event::{ElementState, KeyboardInput, ModifiersState, VirtualKeyCode, WindowEvent};
 
@@ -11,57 +11,68 @@ impl super::Mode for TreeMode {
         mods: &ModifiersState,
         view_state: &mut ViewState,
     ) -> Option<Box<dyn Mode>> {
+        if input.virtual_keycode.is_none() {
+            return None;
+        }
+
         if input.state == ElementState::Pressed {
             if mods.contains(ModifiersState::CTRL) {
-                match input.virtual_keycode {
-                    Some(VirtualKeyCode::J) => {
+                match input.virtual_keycode.unwrap() {
+                    VirtualKeyCode::J => {
                         view_state.presenter.swap_node(view_state.cur_node, 1);
                     }
-                    Some(VirtualKeyCode::K) => {
+                    VirtualKeyCode::K => {
                         view_state.presenter.swap_node(view_state.cur_node, -1);
                     }
-                    Some(VirtualKeyCode::L) => {
-                    }
-                    Some(VirtualKeyCode::H) => {
-                    }
+                    VirtualKeyCode::L => {}
+                    VirtualKeyCode::H => {}
                     _ => {}
                 }
             } else {
-                match input.virtual_keycode {
-                    Some(VirtualKeyCode::J) => {
+                match input.virtual_keycode.unwrap() {
+                    VirtualKeyCode::J => {
                         view_state.move_to_next_child();
                     }
-                    Some(VirtualKeyCode::K) => {
+                    VirtualKeyCode::K => {
                         view_state.move_to_prev_child();
                     }
-                    Some(VirtualKeyCode::L) => {
+                    VirtualKeyCode::L => {
                         view_state.enter_node();
                     }
-                    Some(VirtualKeyCode::H) => {
+                    VirtualKeyCode::H => {
                         view_state.exit_node();
                     }
-                    Some(VirtualKeyCode::I) => {
+                    VirtualKeyCode::I => {
                         return Some(Box::new(InsertMode));
                     }
-                    Some(VirtualKeyCode::E) => {
+                    VirtualKeyCode::E => {
                         return Some(Box::new(EditMode));
                     }
-                    Some(VirtualKeyCode::O) if mods.contains(ModifiersState::SHIFT) => {
-                        view_state.cur_node = view_state.presenter.insert_node_in_parent(view_state.cur_node);
+                    VirtualKeyCode::O if mods.contains(ModifiersState::SHIFT) => {
+                        if let Some(nn) = view_state
+                            .presenter
+                            .insert_node_in_parent(view_state.cur_node)
+                        {
+                            view_state.cur_node = nn;
+                            return Some(Box::new(InsertMode));
+                        }
+                    }
+                    VirtualKeyCode::O => {
+                        view_state.cur_node = view_state
+                            .presenter
+                            .insert_node_as_child(view_state.cur_node);
                         return Some(Box::new(InsertMode));
                     }
-                    Some(VirtualKeyCode::O) => {
-                        view_state.cur_node = view_state.presenter.insert_node(view_state.cur_node);
-                        return Some(Box::new(InsertMode));
-                    }
-                    Some(VirtualKeyCode::X) => {
+                    VirtualKeyCode::X => {
                         view_state.presenter.delete_node(view_state.cur_node);
                     }
-                    Some(VirtualKeyCode::Y) => {
+                    VirtualKeyCode::Y => {
                         view_state.presenter.copy_node(view_state.cur_node);
                     }
-                    Some(VirtualKeyCode::P) => {
-                        view_state.presenter.put_node(view_state.cur_node, mods.contains(ModifiersState::SHIFT));
+                    VirtualKeyCode::P => {
+                        view_state
+                            .presenter
+                            .put_node(view_state.cur_node, mods.contains(ModifiersState::SHIFT));
                     }
                     _ => {}
                 }
@@ -74,4 +85,3 @@ impl super::Mode for TreeMode {
         "TREE"
     }
 }
-

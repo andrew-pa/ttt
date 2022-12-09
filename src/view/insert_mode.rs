@@ -1,4 +1,3 @@
-
 pub struct InsertMode;
 
 impl super::Mode for InsertMode {

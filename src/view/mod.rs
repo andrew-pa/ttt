@@ -2,10 +2,10 @@ use winit::event::{KeyboardInput, ModifiersState, WindowEvent};
 
 use crate::{model::NodeId, presenter::Presenter};
 
+mod edit_mode;
+mod insert_mode;
 mod main_view;
 mod tree_mode;
-mod insert_mode;
-mod edit_mode;
 
 struct ViewState {
     presenter: Presenter,
@@ -14,20 +14,29 @@ struct ViewState {
 
 impl ViewState {
     pub fn move_to_next_child(&mut self) {
-        if let Some(next_child) = self.presenter
+        if let Some(next_child) = self
+            .presenter
             .model()
-                .next_child(self.cur_node)
-                .or_else(|| self.presenter.model().node(self.cur_node).children.first().copied())
+            .next_child(self.cur_node)
+            .or_else(|| {
+                self.presenter
+                    .model()
+                    .node(self.cur_node)
+                    .children
+                    .first()
+                    .copied()
+            })
         {
             self.cur_node = next_child;
         }
     }
 
     pub fn move_to_prev_child(&mut self) {
-        if let Some(prev_child) = self.presenter
+        if let Some(prev_child) = self
+            .presenter
             .model()
-                .prev_child(self.cur_node)
-                .or_else(|| self.presenter.model().node(self.cur_node).parent())
+            .prev_child(self.cur_node)
+            .or_else(|| self.presenter.model().node(self.cur_node).parent())
         {
             self.cur_node = prev_child;
         }

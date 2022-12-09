@@ -95,6 +95,16 @@ impl Tree {
         self.nodes.get_mut(&id).unwrap()
     }
 
+    pub fn delete_node(&mut self, node: NodeId) -> Option<String> {
+        if let Some(parent) = self.node(node).parent() {
+            let parent = self.node_mut(parent);
+            parent.children.retain(|n| *n != node);
+            self.nodes.remove(&node).map(|n| n.text)
+        } else {
+            None
+        }
+    }
+
     /// Move the currently selected node to the next child node. If moving to the next child would
     /// move us past the end of the tree, then None is returned.
     /// This has the effect of moving "down" the tree.
@@ -138,5 +148,20 @@ impl Tree {
         }
 
         None
+    }
+
+    pub fn swap_node(&mut self, node: usize, direction: isize) {
+        if let Some(parent) = self.node(node).parent() {
+            let parent_node = self.node_mut(parent);
+            let ix = parent_node
+                .children
+                .iter()
+                .position(|n| *n == node)
+                .unwrap();
+            let other_ix = ix as isize + direction;
+            if (0..parent_node.children.len() as isize).contains(&other_ix) {
+                parent_node.children.swap(ix, other_ix as usize);
+            }
+        }
     }
 }

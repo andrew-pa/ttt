@@ -1,4 +1,3 @@
-
 pub struct EditMode;
 
 impl super::Mode for EditMode {
