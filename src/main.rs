@@ -10,7 +10,9 @@ use glutin_winit::DisplayBuilder;
 use raw_window_handle::HasRawWindowHandle;
 use skia_safe::gpu::gl::FramebufferInfo;
 use skia_safe::gpu::BackendRenderTarget;
-use skia_safe::{Color, ColorType, Matrix, Paint, PaintStyle, Point, Rect, Surface, Font, FontMgr, FontStyle};
+use skia_safe::{
+    Color, ColorType, Font, FontMgr, FontStyle, Matrix, Paint, PaintStyle, Point, Rect, Surface,
+};
 use skia_safe::{Color4f, Contains};
 use smallvec::SmallVec;
 use winit::dpi::PhysicalSize;
@@ -18,12 +20,12 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopBuilder};
 use winit::window::{Window, WindowBuilder};
 
-mod view;
-mod presenter;
 mod model;
+mod presenter;
+mod view;
 
-use view::View;
 use presenter::Presenter;
+use view::View;
 
 pub struct GlWindow {
     // XXX the surface must be dropped before the window.

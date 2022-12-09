@@ -1,8 +1,7 @@
 use crate::model::{Tree, ROOT_PARENT_ID};
 
-
 pub struct Presenter {
-    tree: Tree
+    tree: Tree,
 }
 
 impl Presenter {
@@ -25,11 +24,7 @@ impl Presenter {
         tree.add_node("Leaf node 9".into(), c);
         tree.add_node("Leaf node 10".into(), root);
 
-
-
-        Presenter {
-            tree
-        }
+        Presenter { tree }
     }
 
     pub fn model(&self) -> &Tree {

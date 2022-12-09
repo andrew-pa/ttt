@@ -1,7 +1,16 @@
-use skia_safe::{Canvas, textlayout::{FontCollection, ParagraphStyle, TextStyle, ParagraphBuilder}, FontMgr, Color4f, PaintStyle, Paint, Rect};
-use winit::event::WindowEvent;
+use crate::{
+    model::{Node, NodeId, Tree},
+    presenter::Presenter,
+};
 
-use crate::{presenter::Presenter, model::{Tree, Node, NodeId}};
+use skia_safe::{
+    textlayout::{FontCollection, ParagraphBuilder, ParagraphStyle, TextStyle},
+    Canvas, Color4f, Font, FontMgr, Paint, PaintStyle, Rect,
+};
+
+use winit::event::{KeyboardInput, ModifiersState, WindowEvent};
+
+use super::*;
 
 fn create_paint(col: Color4f, style: PaintStyle) -> Paint {
     let mut paint = Paint::new(col, None);
@@ -11,8 +20,6 @@ fn create_paint(col: Color4f, style: PaintStyle) -> Paint {
 }
 
 pub struct View {
-    presenter: Presenter,
-
     font_collection: FontCollection,
     pg_style: ParagraphStyle,
 
@@ -20,7 +27,10 @@ pub struct View {
     edge_paint: Paint,
     active_edge_paint: Paint,
 
-    cur_node: NodeId
+    mods: ModifiersState,
+
+    cur_mode: Box<dyn Mode>,
+    state: ViewState,
 }
 
 impl View {
@@ -32,33 +42,56 @@ impl View {
         let fg_paint_fill = create_paint(Color4f::new(1.0, 1.0, 0.9, 1.0), PaintStyle::Fill);
         let mut edge_paint = create_paint(Color4f::new(0.5, 0.5, 0.5, 1.0), PaintStyle::Stroke);
         edge_paint.set_stroke_width(1.0);
-        let mut active_edge_paint = create_paint(Color4f::new(0.9, 0.6, 0.1, 1.0), PaintStyle::Stroke);
+        let mut active_edge_paint =
+            create_paint(Color4f::new(0.9, 0.6, 0.1, 1.0), PaintStyle::Stroke);
         active_edge_paint.set_stroke_width(2.0);
         text_style.set_foreground_color(fg_paint_fill.clone());
         pg_style.set_text_style(&text_style);
         View {
-            cur_node: presenter.model().root_id(),
-            presenter,
+            state: ViewState {
+                cur_node: presenter.model().root_id(),
+                presenter,
+            },
+            cur_mode: Box::new(tree_mode::TreeMode),
             font_collection,
             pg_style,
-            fg_paint_fill, edge_paint, active_edge_paint
+            fg_paint_fill,
+            edge_paint,
+            active_edge_paint,
+            mods: ModifiersState::empty(),
         }
     }
 
-    fn draw_node(&self, canvas: &mut Canvas, model: &Tree, node_id: NodeId, cur_x: f32, cur_y: f32, par_x: f32) -> (f32, f32, f32) {
+    fn draw_node(
+        &self,
+        canvas: &mut Canvas,
+        model: &Tree,
+        node_id: NodeId,
+        cur_x: f32,
+        cur_y: f32,
+        par_x: f32,
+    ) -> (f32, f32, f32) {
         let node = model.node(node_id);
         let canvas_size = canvas.base_layer_size();
 
-        let paint = if node_id == self.cur_node { &self.active_edge_paint } else { &self.edge_paint };
+        let paint = if node_id == self.state.cur_node {
+            &self.active_edge_paint
+        } else {
+            &self.edge_paint
+        };
 
         let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
         pg.push_style(&self.pg_style.text_style());
         pg.add_text(&node.text);
-        let mut pg =  pg.build();
+        let mut pg = pg.build();
         pg.layout(canvas_size.width as f32 - cur_x - 8.0);
         pg.paint(canvas, (cur_x, cur_y));
 
-        canvas.draw_line((par_x-4.0, cur_y + pg.height()/2.0), (cur_x - 4.0, cur_y + pg.height()/2.0), paint);
+        canvas.draw_line(
+            (par_x - 4.0, cur_y + pg.height() / 2.0),
+            (cur_x - 4.0, cur_y + pg.height() / 2.0),
+            paint,
+        );
 
         let ccur_x = cur_x + 32.0;
         let mut ccur_y = cur_y + pg.height() + 8.0;
@@ -74,17 +107,40 @@ impl View {
 
         let h = ccur_y - cur_y - 8.0;
 
-        canvas.draw_line((cur_x - 4.0, cur_y), (cur_x - 4.0, last_c_h + last_c_m), paint);
+        canvas.draw_line(
+            (cur_x - 4.0, cur_y),
+            (cur_x - 4.0, last_c_h + last_c_m),
+            paint,
+        );
 
         (ccur_x - cur_x, h, pg.height() / 2.0)
     }
 
     pub fn draw(&self, canvas: &mut Canvas) {
-        let model = self.presenter.model();
+        let model = self.state.presenter.model();
 
         self.draw_node(canvas, model, model.root_id(), 32.0, 32.0, 0.0);
+
+        canvas.draw_str(
+            self.cur_mode.name(),
+            (8, canvas.base_layer_size().height - 16),
+            &Font::default(),
+            &self.fg_paint_fill,
+        );
     }
 
     pub fn process_event(&mut self, e: WindowEvent) {
+        match e {
+            WindowEvent::KeyboardInput { input, .. } => {
+                if let Some(new_mode) =
+                    self.cur_mode
+                        .process_key(&input, &self.mods, &mut self.state)
+                {
+                    self.cur_mode = new_mode;
+                }
+            }
+            WindowEvent::ModifiersChanged(mods) => self.mods = mods,
+            _ => {}
+        }
     }
 }
