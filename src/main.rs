@@ -131,7 +131,7 @@ impl Renderer {
         canvas.scale((scale_factor as f32, scale_factor as f32));
         canvas.clear(Color4f::new(0.0, 0.0, 0.0, 1.0));
 
-        let paint = Paint::new(Color4f::new(1.0, 1.0, 1.0, 1.0), None);
+        /*let paint = Paint::new(Color4f::new(1.0, 1.0, 1.0, 1.0), None);
 
         // canvas.draw_rect(Rect::from_xywh(32.0, 32.0, 64.0, 64.0), &paint);
         canvas.draw_circle((148.0 + (self.t * 8.0).cos() * 96.0, 148.0), 64.0, &paint);
@@ -139,7 +139,7 @@ impl Renderer {
         let fm = FontMgr::new();
         let font = Font::new(fm.match_family_style("Inconsolata", FontStyle::normal()).unwrap(), 72.0);
 
-        canvas.draw_str("Hello, world!", (200.0, 200.0), &font, &paint);
+        canvas.draw_str("Hello, world!", (200.0, 200.0), &font, &paint);*/
 
         view.draw(canvas);
 
