@@ -69,20 +69,34 @@ impl Presenter {
         if !as_child && self.tree.node(cur_node).parent != ROOT_PARENT_ID {
             let p = self.tree.node(cur_node).parent;
             if consume {
-                self.snip_stack.pop().map(|n| { self.tree.reparent_node(n, p, Some(cur_node)); n })
+                self.snip_stack.pop().map(|n| {
+                    self.tree.reparent_node(n, p, Some(cur_node));
+                    n
+                })
             } else {
-                self.snip_stack.last().map(|n| self.tree.clone_node(*n, p, Some(cur_node)))
+                self.snip_stack
+                    .last()
+                    .map(|n| self.tree.clone_node(*n, p, Some(cur_node)))
             }
         } else {
             if consume {
-                self.snip_stack.pop().map(|n| { self.tree.reparent_node(n, cur_node, None); n })
+                self.snip_stack.pop().map(|n| {
+                    self.tree.reparent_node(n, cur_node, None);
+                    n
+                })
             } else {
-                self.snip_stack.last().map(|n| self.tree.clone_node(*n, cur_node, None))
+                self.snip_stack
+                    .last()
+                    .map(|n| self.tree.clone_node(*n, cur_node, None))
             }
         }
     }
 
     pub fn swap_node(&mut self, cur_node: NodeId, direction: isize) {
         self.tree.swap_node(cur_node, direction);
+    }
+
+    pub fn update_node_text(&mut self, cur_node: usize, new_text: String) {
+        self.tree.node_mut(cur_node).text = new_text;
     }
 }

@@ -43,9 +43,11 @@ impl super::Mode for TreeMode {
                         view_state.exit_node();
                     }
                     VirtualKeyCode::I => {
+                        view_state.begin_editing();
                         return Some(Box::new(InsertMode));
                     }
                     VirtualKeyCode::E => {
+                        view_state.begin_editing();
                         return Some(Box::new(EditMode));
                     }
                     VirtualKeyCode::O if mods.contains(ModifiersState::SHIFT) => {
@@ -73,10 +75,12 @@ impl super::Mode for TreeMode {
                         view_state.presenter.copy_node(view_state.cur_node);
                     }
                     VirtualKeyCode::P => {
-                        if let Some(nn) = view_state
-                            .presenter
-                            .put_node(view_state.cur_node, mods.contains(ModifiersState::SHIFT), mods.contains(ModifiersState::CTRL)) {
-                                view_state.cur_node = nn;
+                        if let Some(nn) = view_state.presenter.put_node(
+                            view_state.cur_node,
+                            mods.contains(ModifiersState::SHIFT),
+                            mods.contains(ModifiersState::ALT),
+                        ) {
+                            view_state.cur_node = nn;
                         }
                     }
                     _ => {}

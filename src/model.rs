@@ -131,7 +131,12 @@ impl Tree {
         }
     }
 
-    pub fn clone_node(&mut self, node: NodeId, new_parent: NodeId, after: Option<NodeId>) -> NodeId {
+    pub fn clone_node(
+        &mut self,
+        node: NodeId,
+        new_parent: NodeId,
+        after: Option<NodeId>,
+    ) -> NodeId {
         let new_node = if let Some(after) = after {
             self.insert_node(self.node(node).text.clone(), new_parent, after)
         } else {

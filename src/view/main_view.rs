@@ -4,20 +4,16 @@ use crate::{
 };
 
 use skia_safe::{
-    textlayout::{FontCollection, ParagraphBuilder, ParagraphStyle, TextStyle},
+    textlayout::{
+        FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, RectHeightStyle,
+        RectWidthStyle, TextStyle,
+    },
     Canvas, Color4f, Font, FontMgr, Paint, PaintStyle, Rect,
 };
 
 use winit::event::{KeyboardInput, ModifiersState, WindowEvent};
 
 use super::*;
-
-fn create_paint(col: Color4f, style: PaintStyle) -> Paint {
-    let mut paint = Paint::new(col, None);
-    paint.set_anti_alias(true);
-    paint.set_style(style);
-    paint
-}
 
 pub struct View {
     font_collection: FontCollection,
@@ -26,6 +22,7 @@ pub struct View {
     fg_paint_fill: Paint,
     edge_paint: Paint,
     active_edge_paint: Paint,
+    cursor_paint: Paint,
 
     mods: ModifiersState,
 
@@ -47,18 +44,49 @@ impl View {
         active_edge_paint.set_stroke_width(2.0);
         text_style.set_foreground_color(fg_paint_fill.clone());
         pg_style.set_text_style(&text_style);
+        let cursor_paint =
+            create_paint(Color4f::new(0.9, 0.7, 0.1, 0.5), PaintStyle::StrokeAndFill);
+
         View {
-            state: ViewState {
-                cur_node: presenter.model().root_id(),
-                presenter,
-            },
+            state: ViewState::new(presenter),
             cur_mode: Box::new(tree_mode::TreeMode),
             font_collection,
             pg_style,
             fg_paint_fill,
             edge_paint,
             active_edge_paint,
+            cursor_paint,
             mods: ModifiersState::empty(),
+        }
+    }
+
+    fn draw_cursor(
+        &self,
+        canvas: &mut Canvas,
+        paragraph: &Paragraph,
+        cursor_index: usize,
+        cur_x: f32,
+        cur_y: f32,
+    ) {
+        if let Some(rect) = paragraph
+            .get_rects_for_range(
+                if cursor_index == 0 {
+                    0..1
+                } else {
+                    cursor_index.saturating_sub(1)..cursor_index
+                },
+                RectHeightStyle::Max,
+                RectWidthStyle::Max,
+            )
+            .first()
+        {
+            let r = rect.rect;
+            let rx = if cursor_index == 0 { r.left } else { r.right };
+            canvas.draw_line(
+                (cur_x + rx, cur_y + r.top),
+                (cur_x + rx, cur_y + r.bottom),
+                &self.cursor_paint,
+            );
         }
     }
 
@@ -80,20 +108,36 @@ impl View {
             &self.edge_paint
         };
 
+        // create Skia paragraph for node text
         let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
         pg.push_style(&self.pg_style.text_style());
         pg.add_text(format!("{} ", node_id));
-        pg.add_text(&node.text);
+        if node_id == self.state.cur_node && self.state.cur_edit.is_some() {
+            let (_, text) = self.state.cur_edit.as_ref().unwrap();
+            add_rope_to_paragraph(&mut pg, text);
+        } else {
+            pg.add_text(&node.text);
+        }
         let mut pg = pg.build();
         pg.layout(canvas_size.width as f32 - cur_x - 8.0);
+
+        // draw the node's text
         pg.paint(canvas, (cur_x, cur_y));
 
+        // if we're editing, draw the cursor
+        if node_id == self.state.cur_node && self.state.cur_edit.is_some() {
+            let (cursor_index, _) = self.state.cur_edit.as_ref().unwrap();
+            self.draw_cursor(canvas, &pg, *cursor_index, cur_x, cur_y);
+        }
+
+        // draw the horizontal edge line from the parent's line to this node
         canvas.draw_line(
             (par_x - 4.0, cur_y + pg.height() / 2.0),
             (cur_x - 4.0, cur_y + pg.height() / 2.0),
             paint,
         );
 
+        // draw each of the children
         let ccur_x = cur_x + 32.0;
         let mut ccur_y = cur_y + pg.height() + 8.0;
 
@@ -108,6 +152,8 @@ impl View {
 
         let h = ccur_y - cur_y - 8.0;
 
+        // draw the vertical line from the top of this node to the horizontal edge line for its
+        // last child
         canvas.draw_line(
             (cur_x - 4.0, cur_y),
             (cur_x - 4.0, last_c_h + last_c_m),
@@ -144,4 +190,20 @@ impl View {
             _ => {}
         }
     }
+}
+
+fn add_rope_to_paragraph(pg: &mut ParagraphBuilder, text: &Rope) {
+    for chunk in text.chunks() {
+        if chunk.is_empty() {
+            continue;
+        }
+        pg.add_text(chunk);
+    }
+}
+
+fn create_paint(col: Color4f, style: PaintStyle) -> Paint {
+    let mut paint = Paint::new(col, None);
+    paint.set_anti_alias(true);
+    paint.set_style(style);
+    paint
 }

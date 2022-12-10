@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
+thiserror = "1"
 smallvec = "1"
 
 skia-safe = { version = "*", features = ["gl", "textlayout"] }

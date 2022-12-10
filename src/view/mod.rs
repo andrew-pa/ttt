@@ -1,3 +1,4 @@
+use ropey::Rope;
 use winit::event::{KeyboardInput, ModifiersState, WindowEvent};
 
 use crate::{model::NodeId, presenter::Presenter};
@@ -5,14 +6,24 @@ use crate::{model::NodeId, presenter::Presenter};
 mod edit_mode;
 mod insert_mode;
 mod main_view;
+mod motion;
 mod tree_mode;
 
 struct ViewState {
     presenter: Presenter,
     cur_node: NodeId,
+    cur_edit: Option<(usize, Rope)>,
 }
 
 impl ViewState {
+    pub fn new(presenter: Presenter) -> ViewState {
+        ViewState {
+            cur_node: presenter.model().root_id(),
+            presenter,
+            cur_edit: None,
+        }
+    }
+
     pub fn move_to_next_child(&mut self) {
         if let Some(next_child) = self
             .presenter
@@ -52,6 +63,20 @@ impl ViewState {
         if let Some(exit_node) = self.presenter.model().node(self.cur_node).parent() {
             self.cur_node = exit_node;
         }
+    }
+
+    pub fn begin_editing(&mut self) {
+        assert!(self.cur_edit.is_none());
+        self.cur_edit = Some((
+            0,
+            Rope::from_str(&self.presenter.model().node(self.cur_node).text),
+        ));
+    }
+
+    pub fn finish_editing(&mut self) {
+        let (_, new_text) = self.cur_edit.take().expect("was editing");
+        self.presenter
+            .update_node_text(self.cur_node, new_text.to_string());
     }
 }
 
