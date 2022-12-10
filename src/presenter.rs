@@ -2,7 +2,7 @@ use crate::model::{NodeId, Tree, ROOT_PARENT_ID};
 
 pub struct Presenter {
     tree: Tree,
-    copy_stack: Vec<String>,
+    snip_stack: Vec<NodeId>,
 }
 
 impl Presenter {
@@ -27,7 +27,7 @@ impl Presenter {
 
         Presenter {
             tree,
-            copy_stack: Vec::new(),
+            snip_stack: Vec::new(),
         }
     }
 
@@ -50,23 +50,35 @@ impl Presenter {
         self.tree.add_node(String::from("new node"), cur_node)
     }
 
-    pub fn delete_node(&mut self, cur_node: NodeId) {
-        if let Some(text) = self.tree.delete_node(cur_node) {
-            self.copy_stack.push(text);
+    pub fn delete_node(&mut self, cur_node: NodeId) -> Option<NodeId> {
+        let p = self.tree.node(cur_node).parent();
+        if p.is_some() {
+            self.tree.cut_node(cur_node);
+            self.snip_stack.push(cur_node);
+            p
+        } else {
+            None
         }
     }
 
     pub fn copy_node(&mut self, cur_node: NodeId) {
-        self.copy_stack.push(self.tree.node(cur_node).text.clone());
+        self.snip_stack.push(cur_node);
     }
 
-    pub fn put_node(&mut self, cur_node: NodeId, consume: bool) {
-        if let Some(text) = if consume {
-            self.copy_stack.pop()
+    pub fn put_node(&mut self, cur_node: NodeId, consume: bool, as_child: bool) -> Option<NodeId> {
+        if !as_child && self.tree.node(cur_node).parent != ROOT_PARENT_ID {
+            let p = self.tree.node(cur_node).parent;
+            if consume {
+                self.snip_stack.pop().map(|n| { self.tree.reparent_node(n, p, Some(cur_node)); n })
+            } else {
+                self.snip_stack.last().map(|n| self.tree.clone_node(*n, p, Some(cur_node)))
+            }
         } else {
-            self.copy_stack.last().cloned()
-        } {
-            self.tree.add_node(text, cur_node);
+            if consume {
+                self.snip_stack.pop().map(|n| { self.tree.reparent_node(n, cur_node, None); n })
+            } else {
+                self.snip_stack.last().map(|n| self.tree.clone_node(*n, cur_node, None))
+            }
         }
     }
 

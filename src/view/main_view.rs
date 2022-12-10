@@ -82,6 +82,7 @@ impl View {
 
         let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
         pg.push_style(&self.pg_style.text_style());
+        pg.add_text(format!("{} ", node_id));
         pg.add_text(&node.text);
         let mut pg = pg.build();
         pg.layout(canvas_size.width as f32 - cur_x - 8.0);

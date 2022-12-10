@@ -64,15 +64,20 @@ impl super::Mode for TreeMode {
                         return Some(Box::new(InsertMode));
                     }
                     VirtualKeyCode::X => {
-                        view_state.presenter.delete_node(view_state.cur_node);
+                        let nc = view_state.presenter.model().next_child(view_state.cur_node);
+                        if let Some(nn) = view_state.presenter.delete_node(view_state.cur_node) {
+                            view_state.cur_node = nc.unwrap_or(nn);
+                        }
                     }
                     VirtualKeyCode::Y => {
                         view_state.presenter.copy_node(view_state.cur_node);
                     }
                     VirtualKeyCode::P => {
-                        view_state
+                        if let Some(nn) = view_state
                             .presenter
-                            .put_node(view_state.cur_node, mods.contains(ModifiersState::SHIFT));
+                            .put_node(view_state.cur_node, mods.contains(ModifiersState::SHIFT), mods.contains(ModifiersState::CTRL)) {
+                                view_state.cur_node = nn;
+                        }
                     }
                     _ => {}
                 }

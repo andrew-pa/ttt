@@ -61,7 +61,8 @@ impl Tree {
     }
 
     pub fn insert_node(&mut self, text: String, parent: NodeId, after: NodeId) -> NodeId {
-        let id = self.nodes.len();
+        let id = self.next_id;
+        self.next_id += 1;
         self.nodes.insert(
             id,
             Node {
@@ -95,14 +96,53 @@ impl Tree {
         self.nodes.get_mut(&id).unwrap()
     }
 
-    pub fn delete_node(&mut self, node: NodeId) -> Option<String> {
+    pub fn cut_node(&mut self, node: NodeId) {
         if let Some(parent) = self.node(node).parent() {
             let parent = self.node_mut(parent);
             parent.children.retain(|n| *n != node);
-            self.nodes.remove(&node).map(|n| n.text)
-        } else {
-            None
+            self.node_mut(node).parent = ROOT_PARENT_ID;
         }
+    }
+
+    pub fn reparent_node(&mut self, node: NodeId, new_parent: NodeId, after: Option<NodeId>) {
+        if let Some(parent) = self.node(node).parent() {
+            let parent = self.node_mut(parent);
+            parent.children.retain(|n| *n != node);
+        }
+
+        self.node_mut(node).parent = new_parent;
+
+        if new_parent != ROOT_PARENT_ID {
+            if let Some(after) = after {
+                let after_ix = self.nodes[&new_parent]
+                    .children
+                    .iter()
+                    .enumerate()
+                    .find_map(|(i, n)| if *n == after { Some(i) } else { None })
+                    .expect("after is child of parent");
+                self.nodes
+                    .get_mut(&new_parent)
+                    .unwrap()
+                    .children
+                    .insert(after_ix + 1, node);
+            } else {
+                self.node_mut(new_parent).children.push(node);
+            }
+        }
+    }
+
+    pub fn clone_node(&mut self, node: NodeId, new_parent: NodeId, after: Option<NodeId>) -> NodeId {
+        let new_node = if let Some(after) = after {
+            self.insert_node(self.node(node).text.clone(), new_parent, after)
+        } else {
+            self.add_node(self.node(node).text.clone(), new_parent)
+        };
+
+        for child in self.node(node).children.clone() {
+            self.clone_node(child, new_node, None);
+        }
+
+        new_node
     }
 
     /// Move the currently selected node to the next child node. If moving to the next child would
