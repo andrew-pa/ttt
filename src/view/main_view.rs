@@ -187,6 +187,9 @@ impl View {
                 }
             }
             WindowEvent::ModifiersChanged(mods) => self.mods = mods,
+            WindowEvent::ReceivedCharacter(ch) => {
+                self.cur_mode.process_char(ch, &self.mods, &mut self.state);
+            }
             _ => {}
         }
     }

@@ -48,7 +48,7 @@ impl super::Mode for TreeMode {
                     }
                     VirtualKeyCode::E => {
                         view_state.begin_editing();
-                        return Some(Box::new(EditMode));
+                        return Some(Box::new(EditMode::default()));
                     }
                     VirtualKeyCode::O if mods.contains(ModifiersState::SHIFT) => {
                         if let Some(nn) = view_state

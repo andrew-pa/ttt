@@ -88,6 +88,8 @@ trait Mode {
         view_state: &mut ViewState,
     ) -> Option<Box<dyn Mode>>;
 
+    fn process_char(&mut self, c: char, mods: &ModifiersState, view_state: &mut ViewState) {}
+
     fn name(&self) -> &'static str;
 }
 

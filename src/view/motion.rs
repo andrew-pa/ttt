@@ -173,6 +173,7 @@ impl TextObject {
                 if !include {
                     range.start += 1;
                 }
+                range.end = range.start;
 
                 let close_char = matching_block_char(*open_char);
                 let mut chars = buf.chars_at(range.end).peekable();
@@ -180,22 +181,23 @@ impl TextObject {
                 loop {
                     match chars.peek() {
                         Some(ch) if *ch == *open_char => {
-                            println!("+");
                             count += 1;
+                            println!("+ {count}");
                         }
                         Some(ch) if *ch == close_char => {
-                            if count == 0 {
+                            if count <= 1 {
+                                println!("x {count}");
                                 break;
                             } else {
-                                println!("-");
                                 count -= 1;
+                                println!("- {count}");
                             }
                         }
                         Some(_) => {}
                         None => break,
                     }
                     range.end += 1;
-                    println!("{:?}", chars.next());
+                    println!("{:?} {}", chars.next(), range.end);
                 }
                 /*while chars.peek().map(|cc| *cc != mc).unwrap_or(false) {
                 chars.next();
@@ -270,18 +272,6 @@ pub struct Motion {
     pub mo: MotionType,
 }
 
-pub fn take_number(schars: &mut std::iter::Peekable<std::str::Chars>) -> Option<usize> {
-    if schars.peek().map(|c| c.is_digit(10)).unwrap_or(false) {
-        let mut num = schars.next().unwrap().to_digit(10).unwrap() as usize;
-        while schars.peek().map(|c| c.is_digit(10)).unwrap_or(false) {
-            num = num * 10 + schars.next().unwrap().to_digit(10).unwrap() as usize;
-        }
-        Some(num)
-    } else {
-        None
-    }
-}
-
 impl Motion {
     pub fn passthrough(r: &Range<usize>) -> Motion {
         Motion {
@@ -291,60 +281,73 @@ impl Motion {
     }
 
     pub fn parse(
-        c: &mut std::iter::Peekable<std::str::Chars>,
+        c: &mut impl Iterator<Item = char>,
         opchar: Option<char>,
         wholecmd: &str,
     ) -> Result<Motion, ParseError> {
-        let count = take_number(c);
-        let txo = match c.peek() {
-            Some('h') => MotionType::Char(Direction::Backward),
-            Some('j') => MotionType::Line(Direction::Forward),
-            Some('k') => MotionType::Line(Direction::Backward),
-            Some('l') => MotionType::Char(Direction::Forward),
-            Some('w') => MotionType::Word(Direction::Forward),
-            Some('b') => MotionType::Word(Direction::Backward),
-            Some('W') => MotionType::BigWord(Direction::Forward),
-            Some('B') => MotionType::BigWord(Direction::Backward),
-            Some('e') => MotionType::EndOfWord(Direction::Forward),
-            Some('E') => MotionType::EndOfBigWord(Direction::Forward),
-            Some('n') => MotionType::NextSearchMatch(Direction::Forward),
-            Some('N') => MotionType::NextSearchMatch(Direction::Backward),
-            Some('g') => {
-                c.next();
-                match c.peek() {
-                    Some('e') => MotionType::EndOfWord(Direction::Backward),
-                    Some('E') => MotionType::EndOfBigWord(Direction::Backward),
-                    Some(';') => MotionType::RepeatNextChar { opposite: true },
-                    Some(_) => return Err(ParseError::UnknownCommand(String::from(wholecmd))),
-                    None => return Err(ParseError::IncompleteCommand),
+        let first = c.next();
+        if first.is_none() {
+            return Err(ParseError::IncompleteCommand);
+        }
+        let mut ch = first.unwrap();
+
+        let count = if ch.is_digit(10) {
+            let mut num = ch.to_digit(10).unwrap() as usize;
+            while let Some(dch) = c.next() {
+                if let Some(d) = dch.to_digit(10) {
+                    num = num * 10 + d as usize;
+                } else {
+                    ch = dch;
+                    break;
                 }
             }
-            Some('^') => MotionType::StartOfLine,
-            Some('$') => MotionType::EndOfLine,
-            Some('_') => MotionType::WholeLine,
-            Some(&tc) if tc == 'f' || tc == 'F' || tc == 't' || tc == 'T' => {
-                c.next();
-                MotionType::NextChar {
-                    c: c.next().ok_or(ParseError::IncompleteCommand)?,
-                    place_before: match tc {
-                        'f' => false,
-                        'F' => false,
-                        't' => true,
-                        'T' => true,
-                        _ => unreachable!(),
-                    },
-                    direction: match tc {
-                        'f' => Direction::Forward,
-                        'F' => Direction::Backward,
-                        't' => Direction::Forward,
-                        'T' => Direction::Backward,
-                        _ => unreachable!(),
-                    },
-                }
-            }
-            Some('i') | Some('a') if opchar.is_some() => {
-                let t = c.next();
-                let obj = match c.peek() {
+            Some(num)
+        } else {
+            None
+        };
+
+        let txo = match ch {
+            'h' => MotionType::Char(Direction::Backward),
+            'j' => MotionType::Line(Direction::Forward),
+            'k' => MotionType::Line(Direction::Backward),
+            'l' => MotionType::Char(Direction::Forward),
+            'w' => MotionType::Word(Direction::Forward),
+            'b' => MotionType::Word(Direction::Backward),
+            'W' => MotionType::BigWord(Direction::Forward),
+            'B' => MotionType::BigWord(Direction::Backward),
+            'e' => MotionType::EndOfWord(Direction::Forward),
+            'E' => MotionType::EndOfBigWord(Direction::Forward),
+            'n' => MotionType::NextSearchMatch(Direction::Forward),
+            'N' => MotionType::NextSearchMatch(Direction::Backward),
+            'g' => match c.next() {
+                Some('e') => MotionType::EndOfWord(Direction::Backward),
+                Some('E') => MotionType::EndOfBigWord(Direction::Backward),
+                Some(';') => MotionType::RepeatNextChar { opposite: true },
+                Some(_) => return Err(ParseError::UnknownCommand(String::from(wholecmd))),
+                None => return Err(ParseError::IncompleteCommand),
+            },
+            '^' => MotionType::StartOfLine,
+            '$' => MotionType::EndOfLine,
+            '_' => MotionType::WholeLine,
+            tc if tc == 'f' || tc == 'F' || tc == 't' || tc == 'T' => MotionType::NextChar {
+                c: c.next().ok_or(ParseError::IncompleteCommand)?,
+                place_before: match tc {
+                    'f' => false,
+                    'F' => false,
+                    't' => true,
+                    'T' => true,
+                    _ => unreachable!(),
+                },
+                direction: match tc {
+                    'f' => Direction::Forward,
+                    'F' => Direction::Backward,
+                    't' => Direction::Forward,
+                    'T' => Direction::Backward,
+                    _ => unreachable!(),
+                },
+            },
+            t @ ('i' | 'a') if opchar.is_some() => {
+                let obj = match c.next() {
                     Some('w') => TextObject::Word,
                     Some('W') => TextObject::BigWord,
                     Some('p') => TextObject::Paragraph,
@@ -358,18 +361,16 @@ impl Motion {
                     None => return Err(ParseError::IncompleteCommand),
                 };
                 match t {
-                    Some('i') => MotionType::Inner(obj),
-                    Some('a') => MotionType::An(obj),
+                    'i' => MotionType::Inner(obj),
+                    'a' => MotionType::An(obj),
                     _ => unreachable!(),
                 }
             }
-            Some(';') => MotionType::RepeatNextChar { opposite: false },
-            Some(',') => MotionType::RepeatNextChar { opposite: true },
-            Some(c) if opchar.map(|opc| opc == *c).unwrap_or(false) => MotionType::WholeLine,
-            Some(_) => return Err(ParseError::UnknownCommand(String::from(wholecmd))),
-            None => return Err(ParseError::IncompleteCommand),
+            ';' => MotionType::RepeatNextChar { opposite: false },
+            ',' => MotionType::RepeatNextChar { opposite: true },
+            c if opchar.map(|opc| opc == c).unwrap_or(false) => MotionType::WholeLine,
+            _ => return Err(ParseError::UnknownCommand(String::from(wholecmd))),
         };
-        c.next();
         Ok(Motion {
             count: count.unwrap_or(1),
             mo: txo,
@@ -377,11 +378,22 @@ impl Motion {
     }
 
     #[cfg(test)]
-    fn range_without_find(&self, buf: &Rope, cursor_index: usize, multiplier: usize) -> Range<usize> {
+    fn range_without_find(
+        &self,
+        buf: &Rope,
+        cursor_index: usize,
+        multiplier: usize,
+    ) -> Range<usize> {
         self.range(buf, cursor_index, multiplier, &mut None)
     }
 
-    pub fn range(&self, buf: &Rope, cursor_index: usize, multiplier: usize, last_char_query: &mut Option<(char, bool, Direction)>) -> Range<usize> {
+    pub fn range(
+        &self,
+        buf: &Rope,
+        cursor_index: usize,
+        multiplier: usize,
+        last_char_query: &mut Option<(char, bool, Direction)>,
+    ) -> Range<usize> {
         match &self.mo {
             MotionType::Passthrough(s, e) => return *s..*e,
             MotionType::An(obj) => {
@@ -641,7 +653,12 @@ impl Motion {
                                 },
                             },
                         })
-                        .range(buf, cursor_index, multiplier, last_char_query);
+                        .range(
+                            buf,
+                            cursor_index,
+                            multiplier,
+                            last_char_query,
+                        );
                         //*last_char_query = Some((c, place_before, direction));
                     } else {
                         // can't fail but probably the user would like to know what's going on
@@ -1051,12 +1068,24 @@ mod tests {
 
         cursor_index = 1;
         mo.mo = MotionType::An(TextObject::Block('('));
-        assert_eq!(mo.range_without_find(&b, cursor_index, 1), 1..9, "on first (");
+        assert_eq!(
+            mo.range_without_find(&b, cursor_index, 1),
+            1..9,
+            "on first ("
+        );
         cursor_index += 2;
-        assert_eq!(mo.range_without_find(&b, cursor_index, 1), 1..9, "in first (");
+        assert_eq!(
+            mo.range_without_find(&b, cursor_index, 1),
+            1..9,
+            "in first ("
+        );
 
         cursor_index += 2;
-        assert_eq!(mo.range_without_find(&b, cursor_index, 1), 4..6, "in nested (");
+        assert_eq!(
+            mo.range_without_find(&b, cursor_index, 1),
+            4..6,
+            "in nested ("
+        );
 
         cursor_index = 15;
         mo.mo = MotionType::An(TextObject::Block('{'));
@@ -1078,12 +1107,24 @@ mod tests {
 
         cursor_index = 1;
         mo.mo = MotionType::Inner(TextObject::Block('('));
-        assert_eq!(mo.range_without_find(&b, cursor_index, 1), 2..8, "on first (");
+        assert_eq!(
+            mo.range_without_find(&b, cursor_index, 1),
+            2..8,
+            "on first ("
+        );
         cursor_index += 2;
-        assert_eq!(mo.range_without_find(&b, cursor_index, 1), 2..8, "in first (");
+        assert_eq!(
+            mo.range_without_find(&b, cursor_index, 1),
+            2..8,
+            "in first ("
+        );
 
         cursor_index += 2;
-        assert_eq!(mo.range_without_find(&b, cursor_index, 1), 5..5, "in nested (");
+        assert_eq!(
+            mo.range_without_find(&b, cursor_index, 1),
+            5..5,
+            "in nested ("
+        );
 
         cursor_index = 15;
         mo.mo = MotionType::Inner(TextObject::Block('{'));

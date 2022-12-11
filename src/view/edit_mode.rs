@@ -1,6 +1,16 @@
 use super::motion::*;
 
-pub struct EditMode;
+pub struct EditMode {
+    cmd_buffer: String,
+}
+
+impl Default for EditMode {
+    fn default() -> Self {
+        Self {
+            cmd_buffer: Default::default(),
+        }
+    }
+}
 
 impl super::Mode for EditMode {
     fn process_key(
@@ -14,5 +24,13 @@ impl super::Mode for EditMode {
 
     fn name(&self) -> &'static str {
         "EDIT"
+    }
+
+    fn process_char(
+        &mut self,
+        c: char,
+        mods: &winit::event::ModifiersState,
+        view_state: &mut super::ViewState,
+    ) {
     }
 }
