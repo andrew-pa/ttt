@@ -27,6 +27,11 @@ impl super::Mode for InsertMode {
                 }
                 None
             }
+            VirtualKeyCode::Return => {
+                buf.insert_char(*cursor_index, '\n');
+                *cursor_index += 1;
+                None
+            }
             _ => None,
         }
     }
@@ -45,7 +50,7 @@ impl super::Mode for InsertMode {
         mods: &winit::event::ModifiersState,
         view_state: &mut super::ViewState,
     ) -> Option<Box<dyn super::Mode>> {
-        if c.is_control() {
+        if c.is_control() && c != '\n' {
             return None;
         }
         let (cursor_index, buf) = view_state.cur_edit.as_mut().unwrap();

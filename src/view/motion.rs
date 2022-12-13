@@ -450,7 +450,7 @@ impl Motion {
                 MotionType::EndOfLine => {
                     let cur_line_index = buf.char_to_line(range.end);
                     let cur_line = buf.line(cur_line_index);
-                    range.end = buf.line_to_char(cur_line_index) + cur_line.len_chars() - 2;
+                    range.end = buf.line_to_char(cur_line_index) + cur_line.len_chars() - 1;
                 }
 
                 MotionType::Word(Direction::Forward) => {
@@ -502,7 +502,7 @@ impl Motion {
 
                 MotionType::Word(Direction::Backward) => {
                     let mut chars = buf
-                        .chars_at(range.end + 1)
+                        .chars_at((range.end + 1).min(buf.len_chars()))
                         .reversed()
                         .inspect(|i| println!("{i} {:?}", i.class()))
                         .map(CharClassify::class)
@@ -688,7 +688,7 @@ impl Motion {
 #[derive(Debug)]
 pub enum Command {
     Move(Motion),
-    Insert,
+    Insert { at: Option<Motion> },
     ReplaceChar(char),
     Change(Motion),
     Delete(Motion),
@@ -699,7 +699,25 @@ pub enum Command {
 impl Command {
     pub fn parse(cmd: &str) -> Result<Command, ParseError> {
         match cmd.chars().next() {
-            Some('i') => Ok(Command::Insert),
+            Some('i') => Ok(Command::Insert { at: None }),
+            Some('a') => Ok(Command::Insert {
+                at: Some(Motion {
+                    count: 1,
+                    mo: MotionType::Char(Direction::Forward),
+                }),
+            }),
+            Some('I') => Ok(Command::Insert {
+                at: Some(Motion {
+                    count: 1,
+                    mo: MotionType::StartOfLine,
+                }),
+            }),
+            Some('A') => Ok(Command::Insert {
+                at: Some(Motion {
+                    count: 1,
+                    mo: MotionType::EndOfLine,
+                }),
+            }),
             Some('p') => Ok(Command::Put { consume: true }),
             Some('P') => Ok(Command::Put { consume: false }),
             Some('r') => Ok(Command::ReplaceChar(
@@ -709,7 +727,6 @@ impl Command {
                 count: 1,
                 mo: MotionType::Char(Direction::Forward),
             })),
-            Some('a') => todo!(),
             Some('o') => todo!(),
             Some(op @ ('d' | 'c' | 'y')) => {
                 let m = Motion::parse(&mut cmd.chars().skip(1), Some(op))?;
@@ -775,7 +792,7 @@ mod tests {
             mo: MotionType::EndOfLine,
             count: 1,
         };
-        assert_eq!(mo.range_without_find(&b, 4, 1), 4..6);
+        assert_eq!(mo.range_without_find(&b, 4, 1), 4..7);
     }
 
     #[test]

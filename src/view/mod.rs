@@ -115,7 +115,12 @@ impl ViewState {
                     buf.insert(*cursor_index, &s);
                 }
             }
-            Command::Insert => return Some(Box::new(insert_mode::InsertMode)),
+            Command::Insert { at } => {
+                if let Some(at) = at {
+                    *cursor_index = at.range(buf, *cursor_index, 1, &mut None).end;
+                }
+                return Some(Box::new(insert_mode::InsertMode));
+            }
         }
         None
     }
