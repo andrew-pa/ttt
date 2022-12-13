@@ -56,6 +56,7 @@ impl super::Mode for TreeMode {
                             .insert_node_in_parent(view_state.cur_node)
                         {
                             view_state.cur_node = nn;
+                            view_state.begin_editing();
                             return Some(Box::new(InsertMode));
                         }
                     }
@@ -63,6 +64,7 @@ impl super::Mode for TreeMode {
                         view_state.cur_node = view_state
                             .presenter
                             .insert_node_as_child(view_state.cur_node);
+                        view_state.begin_editing();
                         return Some(Box::new(InsertMode));
                     }
                     VirtualKeyCode::X => {

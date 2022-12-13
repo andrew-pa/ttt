@@ -9,6 +9,11 @@ mod main_view;
 mod motion;
 mod tree_mode;
 
+enum CursorShape {
+    Block,
+    Line,
+}
+
 struct ViewState {
     presenter: Presenter,
     cur_node: NodeId,
@@ -78,6 +83,42 @@ impl ViewState {
         self.presenter
             .update_node_text(self.cur_node, new_text.to_string());
     }
+
+    pub fn process_normal_cmd(&mut self, cmd: motion::Command) -> Option<Box<dyn Mode>> {
+        use motion::*;
+        let (cursor_index, buf) = self.cur_edit.as_mut().unwrap();
+        match cmd {
+            Command::Move(m) => {
+                *cursor_index = m.range(buf, *cursor_index, 1, &mut None).end;
+            }
+            Command::ReplaceChar(c) => {
+                buf.remove(*cursor_index..*cursor_index + 1);
+                buf.insert_char(*cursor_index, c);
+            }
+            Command::Change(m) => {
+                let r = m.range(buf, *cursor_index, 1, &mut None);
+                self.presenter.copy_str(buf.slice(r.clone()).to_string());
+                buf.remove(r);
+                return Some(Box::new(insert_mode::InsertMode));
+            }
+            Command::Delete(m) => {
+                let r = m.range(buf, *cursor_index, 1, &mut None);
+                self.presenter.copy_str(buf.slice(r.clone()).to_string());
+                buf.remove(r);
+            }
+            Command::Copy(m) => {
+                let r = m.range(buf, *cursor_index, 1, &mut None);
+                self.presenter.copy_str(buf.slice(r.clone()).to_string());
+            }
+            Command::Put { consume } => {
+                if let Some(s) = self.presenter.pop_snip_str() {
+                    buf.insert(*cursor_index, &s);
+                }
+            }
+            Command::Insert => return Some(Box::new(insert_mode::InsertMode)),
+        }
+        None
+    }
 }
 
 trait Mode {
@@ -88,9 +129,20 @@ trait Mode {
         view_state: &mut ViewState,
     ) -> Option<Box<dyn Mode>>;
 
-    fn process_char(&mut self, c: char, mods: &ModifiersState, view_state: &mut ViewState) {}
+    fn process_char(
+        &mut self,
+        c: char,
+        mods: &ModifiersState,
+        view_state: &mut ViewState,
+    ) -> Option<Box<dyn Mode>> {
+        None
+    }
 
     fn name(&self) -> &'static str;
+
+    fn cursor_shape(&self) -> Option<CursorShape> {
+        None
+    }
 }
 
 pub use main_view::View;

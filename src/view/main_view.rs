@@ -27,6 +27,7 @@ pub struct View {
     mods: ModifiersState,
 
     cur_mode: Box<dyn Mode>,
+    mode_just_switched: bool,
     state: ViewState,
 }
 
@@ -45,7 +46,7 @@ impl View {
         text_style.set_foreground_color(fg_paint_fill.clone());
         pg_style.set_text_style(&text_style);
         let cursor_paint =
-            create_paint(Color4f::new(0.9, 0.7, 0.1, 0.5), PaintStyle::StrokeAndFill);
+            create_paint(Color4f::new(0.9, 0.7, 0.1, 0.8), PaintStyle::StrokeAndFill);
 
         View {
             state: ViewState::new(presenter),
@@ -57,6 +58,7 @@ impl View {
             active_edge_paint,
             cursor_paint,
             mods: ModifiersState::empty(),
+            mode_just_switched: false,
         }
     }
 
@@ -65,28 +67,37 @@ impl View {
         canvas: &mut Canvas,
         paragraph: &Paragraph,
         cursor_index: usize,
+        buf: &Rope,
         cur_x: f32,
         cur_y: f32,
     ) {
+        let ch_range = if cursor_index == buf.len_chars() {
+            buf.char_to_byte(cursor_index.saturating_sub(1))..buf.char_to_byte(cursor_index)
+        } else {
+            buf.char_to_byte(cursor_index)..buf.char_to_byte(cursor_index + 1)
+        };
         if let Some(rect) = paragraph
-            .get_rects_for_range(
-                if cursor_index == 0 {
-                    0..1
-                } else {
-                    cursor_index.saturating_sub(1)..cursor_index
-                },
-                RectHeightStyle::Max,
-                RectWidthStyle::Max,
-            )
+            .get_rects_for_range(ch_range, RectHeightStyle::Max, RectWidthStyle::Max)
             .first()
         {
             let r = rect.rect;
-            let rx = if cursor_index == 0 { r.left } else { r.right };
-            canvas.draw_line(
-                (cur_x + rx, cur_y + r.top),
-                (cur_x + rx, cur_y + r.bottom),
-                &self.cursor_paint,
-            );
+            match self.cur_mode.cursor_shape().unwrap() {
+                CursorShape::Block => {
+                    canvas.draw_rect(r.with_offset((cur_x, cur_y)), &self.cursor_paint);
+                }
+                CursorShape::Line => {
+                    let rx = if cursor_index < buf.len_chars() {
+                        r.left
+                    } else {
+                        r.right
+                    };
+                    canvas.draw_line(
+                        (cur_x + rx, cur_y + r.top),
+                        (cur_x + rx, cur_y + r.bottom),
+                        &self.cursor_paint,
+                    );
+                }
+            }
         }
     }
 
@@ -111,7 +122,7 @@ impl View {
         // create Skia paragraph for node text
         let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
         pg.push_style(&self.pg_style.text_style());
-        pg.add_text(format!("{} ", node_id));
+        // pg.add_text(format!("{} ", node_id));
         if node_id == self.state.cur_node && self.state.cur_edit.is_some() {
             let (_, text) = self.state.cur_edit.as_ref().unwrap();
             add_rope_to_paragraph(&mut pg, text);
@@ -126,8 +137,8 @@ impl View {
 
         // if we're editing, draw the cursor
         if node_id == self.state.cur_node && self.state.cur_edit.is_some() {
-            let (cursor_index, _) = self.state.cur_edit.as_ref().unwrap();
-            self.draw_cursor(canvas, &pg, *cursor_index, cur_x, cur_y);
+            let (cursor_index, buf) = self.state.cur_edit.as_ref().unwrap();
+            self.draw_cursor(canvas, &pg, *cursor_index, buf, cur_x, cur_y);
         }
 
         // draw the horizontal edge line from the parent's line to this node
@@ -184,11 +195,20 @@ impl View {
                         .process_key(&input, &self.mods, &mut self.state)
                 {
                     self.cur_mode = new_mode;
+                    self.mode_just_switched = true;
+                } else if self.mode_just_switched {
+                    self.mode_just_switched = false;
                 }
             }
             WindowEvent::ModifiersChanged(mods) => self.mods = mods,
-            WindowEvent::ReceivedCharacter(ch) => {
-                self.cur_mode.process_char(ch, &self.mods, &mut self.state);
+            WindowEvent::ReceivedCharacter(ch) if !self.mode_just_switched => {
+                if let Some(new_mode) = self.cur_mode.process_char(ch, &self.mods, &mut self.state)
+                {
+                    self.cur_mode = new_mode;
+                    self.mode_just_switched = true;
+                } else if self.mode_just_switched {
+                    self.mode_just_switched = false;
+                }
             }
             _ => {}
         }

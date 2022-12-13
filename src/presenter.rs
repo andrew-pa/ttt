@@ -2,7 +2,8 @@ use crate::model::{NodeId, Tree, ROOT_PARENT_ID};
 
 pub struct Presenter {
     tree: Tree,
-    snip_stack: Vec<NodeId>,
+    snip_stack_nodes: Vec<NodeId>,
+    snip_stack_strs: Vec<String>,
 }
 
 impl Presenter {
@@ -27,7 +28,8 @@ impl Presenter {
 
         Presenter {
             tree,
-            snip_stack: Vec::new(),
+            snip_stack_nodes: Vec::new(),
+            snip_stack_strs: Vec::new(),
         }
     }
 
@@ -37,24 +39,21 @@ impl Presenter {
 
     pub fn insert_node_in_parent(&mut self, cur_node: NodeId) -> Option<NodeId> {
         if let Some(parent) = self.tree.node(cur_node).parent() {
-            Some(
-                self.tree
-                    .insert_node(String::from("new node"), parent, cur_node),
-            )
+            Some(self.tree.insert_node(String::new(), parent, cur_node))
         } else {
             None
         }
     }
 
     pub fn insert_node_as_child(&mut self, cur_node: NodeId) -> NodeId {
-        self.tree.add_node(String::from("new node"), cur_node)
+        self.tree.add_node(String::new(), cur_node)
     }
 
     pub fn delete_node(&mut self, cur_node: NodeId) -> Option<NodeId> {
         let p = self.tree.node(cur_node).parent();
         if p.is_some() {
             self.tree.cut_node(cur_node);
-            self.snip_stack.push(cur_node);
+            self.snip_stack_nodes.push(cur_node);
             p
         } else {
             None
@@ -62,33 +61,33 @@ impl Presenter {
     }
 
     pub fn copy_node(&mut self, cur_node: NodeId) {
-        self.snip_stack.push(cur_node);
+        self.snip_stack_nodes.push(cur_node);
+    }
+
+    fn move_or_clone_node_from_top_of_snips(
+        &mut self,
+        consume: bool,
+        parent: NodeId,
+        after: Option<NodeId>,
+    ) -> Option<NodeId> {
+        if consume {
+            self.snip_stack_nodes.pop().map(|n| {
+                self.tree.reparent_node(n, parent, after);
+                n
+            })
+        } else {
+            self.snip_stack_nodes
+                .last()
+                .map(|n| self.tree.clone_node(*n, parent, after))
+        }
     }
 
     pub fn put_node(&mut self, cur_node: NodeId, consume: bool, as_child: bool) -> Option<NodeId> {
         if !as_child && self.tree.node(cur_node).parent != ROOT_PARENT_ID {
             let p = self.tree.node(cur_node).parent;
-            if consume {
-                self.snip_stack.pop().map(|n| {
-                    self.tree.reparent_node(n, p, Some(cur_node));
-                    n
-                })
-            } else {
-                self.snip_stack
-                    .last()
-                    .map(|n| self.tree.clone_node(*n, p, Some(cur_node)))
-            }
+            self.move_or_clone_node_from_top_of_snips(consume, p, Some(cur_node))
         } else {
-            if consume {
-                self.snip_stack.pop().map(|n| {
-                    self.tree.reparent_node(n, cur_node, None);
-                    n
-                })
-            } else {
-                self.snip_stack
-                    .last()
-                    .map(|n| self.tree.clone_node(*n, cur_node, None))
-            }
+            self.move_or_clone_node_from_top_of_snips(consume, cur_node, None)
         }
     }
 
@@ -98,5 +97,17 @@ impl Presenter {
 
     pub fn update_node_text(&mut self, cur_node: usize, new_text: String) {
         self.tree.node_mut(cur_node).text = new_text;
+    }
+
+    pub fn copy_str(&mut self, s: String) {
+        self.snip_stack_strs.push(s);
+    }
+
+    pub fn pop_snip_str(&mut self) -> Option<String> {
+        self.snip_stack_strs.pop()
+    }
+
+    pub fn top_snip_str(&self) -> Option<&String> {
+        self.snip_stack_strs.last()
     }
 }

@@ -8,10 +8,10 @@ use thiserror::Error;
 pub enum ParseError {
     #[error("incomplete command")]
     IncompleteCommand,
-    #[error("invalid command: {0}")]
-    InvalidCommand(String),
-    #[error("unknown command: {0}")]
-    UnknownCommand(String),
+    #[error("invalid command")]
+    InvalidCommand,
+    #[error("unknown command")]
+    UnknownCommand,
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -283,7 +283,6 @@ impl Motion {
     pub fn parse(
         c: &mut impl Iterator<Item = char>,
         opchar: Option<char>,
-        wholecmd: &str,
     ) -> Result<Motion, ParseError> {
         let first = c.next();
         if first.is_none() {
@@ -306,6 +305,8 @@ impl Motion {
             None
         };
 
+        // println!("m {count:?} {first:?}");
+
         let txo = match ch {
             'h' => MotionType::Char(Direction::Backward),
             'j' => MotionType::Line(Direction::Forward),
@@ -323,7 +324,7 @@ impl Motion {
                 Some('e') => MotionType::EndOfWord(Direction::Backward),
                 Some('E') => MotionType::EndOfBigWord(Direction::Backward),
                 Some(';') => MotionType::RepeatNextChar { opposite: true },
-                Some(_) => return Err(ParseError::UnknownCommand(String::from(wholecmd))),
+                Some(_) => return Err(ParseError::UnknownCommand),
                 None => return Err(ParseError::IncompleteCommand),
             },
             '^' => MotionType::StartOfLine,
@@ -357,7 +358,7 @@ impl Motion {
                     Some('<') | Some('>') => TextObject::Block('<'),
                     Some('"') => TextObject::Block('"'),
                     Some('\'') => TextObject::Block('\''),
-                    Some(_) => return Err(ParseError::UnknownCommand(String::from(wholecmd))),
+                    Some(_) => return Err(ParseError::UnknownCommand),
                     None => return Err(ParseError::IncompleteCommand),
                 };
                 match t {
@@ -369,7 +370,7 @@ impl Motion {
             ';' => MotionType::RepeatNextChar { opposite: false },
             ',' => MotionType::RepeatNextChar { opposite: true },
             c if opchar.map(|opc| opc == c).unwrap_or(false) => MotionType::WholeLine,
-            _ => return Err(ParseError::UnknownCommand(String::from(wholecmd))),
+            _ => return Err(ParseError::UnknownCommand),
         };
         Ok(Motion {
             count: count.unwrap_or(1),
@@ -422,11 +423,11 @@ impl Motion {
                         Direction::Backward => cur_line_index.saturating_sub(1),
                     };
                     let start_of_new_line = buf.line_to_char(new_line_index);
-                    let line = buf.line(cur_line_index);
+                    let start_of_cur_line = buf.line_to_char(cur_line_index);
                     let new_line = buf.line(new_line_index);
                     // preserve column position if possible
                     range.end = start_of_new_line
-                        + (range.end - line.len_chars()).min(new_line.len_chars());
+                        + (range.end - start_of_cur_line).min(new_line.len_chars());
                 }
 
                 MotionType::StartOfLine => {
@@ -681,6 +682,47 @@ impl Motion {
             }
         }
         range
+    }
+}
+
+#[derive(Debug)]
+pub enum Command {
+    Move(Motion),
+    Insert,
+    ReplaceChar(char),
+    Change(Motion),
+    Delete(Motion),
+    Copy(Motion),
+    Put { consume: bool },
+}
+
+impl Command {
+    pub fn parse(cmd: &str) -> Result<Command, ParseError> {
+        match cmd.chars().next() {
+            Some('i') => Ok(Command::Insert),
+            Some('p') => Ok(Command::Put { consume: true }),
+            Some('P') => Ok(Command::Put { consume: false }),
+            Some('r') => Ok(Command::ReplaceChar(
+                cmd.chars().nth(1).ok_or(ParseError::IncompleteCommand)?,
+            )),
+            Some('x') => Ok(Command::Delete(Motion {
+                count: 1,
+                mo: MotionType::Char(Direction::Forward),
+            })),
+            Some('a') => todo!(),
+            Some('o') => todo!(),
+            Some(op @ ('d' | 'c' | 'y')) => {
+                let m = Motion::parse(&mut cmd.chars().skip(1), Some(op))?;
+                match op {
+                    'd' => Ok(Command::Delete(m)),
+                    'c' => Ok(Command::Change(m)),
+                    'y' => Ok(Command::Copy(m)),
+                    _ => Err(ParseError::UnknownCommand),
+                }
+            }
+            Some(_) => Ok(Command::Move(Motion::parse(&mut cmd.chars(), None)?)),
+            None => Err(ParseError::IncompleteCommand),
+        }
     }
 }
 
