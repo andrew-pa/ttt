@@ -85,6 +85,9 @@ impl super::Mode for TreeMode {
                             view_state.cur_node = nn;
                         }
                     }
+                    VirtualKeyCode::T => {
+                        view_state.toggle_folded();
+                    }
                     _ => {}
                 }
             }

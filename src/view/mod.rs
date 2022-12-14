@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use ropey::Rope;
 use winit::event::{KeyboardInput, ModifiersState, WindowEvent};
 
@@ -18,6 +20,7 @@ struct ViewState {
     presenter: Presenter,
     cur_node: NodeId,
     cur_edit: Option<(usize, Rope)>,
+    folded_nodes: HashSet<NodeId>
 }
 
 impl ViewState {
@@ -26,6 +29,7 @@ impl ViewState {
             cur_node: presenter.model().root_id(),
             presenter,
             cur_edit: None,
+            folded_nodes: HashSet::new()
         }
     }
 
@@ -123,6 +127,14 @@ impl ViewState {
             }
         }
         None
+    }
+
+    pub fn toggle_folded(&mut self) {
+        if !self.presenter.model().node(self.cur_node).children.is_empty() {
+            if !self.folded_nodes.remove(&self.cur_node) {
+                self.folded_nodes.insert(self.cur_node);
+            }
+        }
     }
 }
 

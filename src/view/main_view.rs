@@ -38,10 +38,10 @@ impl View {
         let mut pg_style = ParagraphStyle::new();
         let mut text_style = TextStyle::new();
         let fg_paint_fill = create_paint(Color4f::new(1.0, 1.0, 0.9, 1.0), PaintStyle::Fill);
-        let mut edge_paint = create_paint(Color4f::new(0.5, 0.5, 0.5, 1.0), PaintStyle::Stroke);
+        let mut edge_paint = create_paint(Color4f::new(0.5, 0.5, 0.5, 1.0), PaintStyle::StrokeAndFill);
         edge_paint.set_stroke_width(1.0);
         let mut active_edge_paint =
-            create_paint(Color4f::new(0.9, 0.6, 0.1, 1.0), PaintStyle::Stroke);
+            create_paint(Color4f::new(0.9, 0.6, 0.1, 1.0), PaintStyle::StrokeAndFill);
         active_edge_paint.set_stroke_width(2.0);
         text_style.set_foreground_color(fg_paint_fill.clone());
         pg_style.set_text_style(&text_style);
@@ -148,30 +148,44 @@ impl View {
             paint,
         );
 
-        // draw each of the children
-        let ccur_x = cur_x + 32.0;
-        let mut ccur_y = cur_y + pg.height() + 8.0;
+        if self.state.folded_nodes.contains(&node_id) {
+            // draw the vertical line from the top of this node to the bottom
+            let bottom = (cur_x - 4.0, cur_y+pg.height());
+            canvas.draw_line(
+                (cur_x - 4.0, cur_y),
+                bottom,
+                paint,
+            );
 
-        let mut last_c_h = cur_y + pg.height();
-        let mut last_c_m = 0.0;
-        for child in node.children.iter() {
-            let (w, h, m) = self.draw_node(canvas, model, *child, ccur_x, ccur_y, cur_x);
-            last_c_h = ccur_y;
-            last_c_m = m;
-            ccur_y += h + 8.0;
+            canvas.draw_circle(bottom, 2.0, &paint);
+
+            (32.0, pg.height(), pg.height() / 2.0)
+        } else {
+            // draw each of the children
+            let ccur_x = cur_x + 32.0;
+            let mut ccur_y = cur_y + pg.height() + 8.0;
+
+            let mut last_c_h = cur_y + pg.height();
+            let mut last_c_m = 0.0;
+            for child in node.children.iter() {
+                let (w, h, m) = self.draw_node(canvas, model, *child, ccur_x, ccur_y, cur_x);
+                last_c_h = ccur_y;
+                last_c_m = m;
+                ccur_y += h + 8.0;
+            }
+
+            let h = ccur_y - cur_y - 8.0;
+
+            // draw the vertical line from the top of this node to the horizontal edge line for its
+            // last child
+            canvas.draw_line(
+                (cur_x - 4.0, cur_y),
+                (cur_x - 4.0, last_c_h + last_c_m),
+                paint,
+            );
+
+            (ccur_x - cur_x, h, pg.height() / 2.0)
         }
-
-        let h = ccur_y - cur_y - 8.0;
-
-        // draw the vertical line from the top of this node to the horizontal edge line for its
-        // last child
-        canvas.draw_line(
-            (cur_x - 4.0, cur_y),
-            (cur_x - 4.0, last_c_h + last_c_m),
-            paint,
-        );
-
-        (ccur_x - cur_x, h, pg.height() / 2.0)
     }
 
     pub fn draw(&self, canvas: &mut Canvas) {
