@@ -419,7 +419,7 @@ impl Motion {
                 MotionType::Line(direction) => {
                     let cur_line_index = buf.char_to_line(range.end);
                     let new_line_index = match direction {
-                        Direction::Forward => (cur_line_index + 1).min(buf.len_lines()),
+                        Direction::Forward => (cur_line_index + 1).min(buf.len_lines()-1),
                         Direction::Backward => cur_line_index.saturating_sub(1),
                     };
                     let start_of_new_line = buf.line_to_char(new_line_index);
@@ -688,7 +688,7 @@ impl Motion {
 #[derive(Debug)]
 pub enum Command {
     Move(Motion),
-    Insert { at: Option<Motion> },
+    Insert { at: Option<Motion>, new_line: bool },
     ReplaceChar(char),
     Change(Motion),
     Delete(Motion),
@@ -699,24 +699,27 @@ pub enum Command {
 impl Command {
     pub fn parse(cmd: &str) -> Result<Command, ParseError> {
         match cmd.chars().next() {
-            Some('i') => Ok(Command::Insert { at: None }),
+            Some('i') => Ok(Command::Insert { at: None, new_line: false }),
             Some('a') => Ok(Command::Insert {
                 at: Some(Motion {
                     count: 1,
                     mo: MotionType::Char(Direction::Forward),
                 }),
+                new_line: false
             }),
             Some('I') => Ok(Command::Insert {
                 at: Some(Motion {
                     count: 1,
                     mo: MotionType::StartOfLine,
                 }),
+                new_line: false
             }),
             Some('A') => Ok(Command::Insert {
                 at: Some(Motion {
                     count: 1,
                     mo: MotionType::EndOfLine,
                 }),
+                new_line: false
             }),
             Some('p') => Ok(Command::Put { consume: true }),
             Some('P') => Ok(Command::Put { consume: false }),
@@ -727,7 +730,7 @@ impl Command {
                 count: 1,
                 mo: MotionType::Char(Direction::Forward),
             })),
-            Some('o') => todo!(),
+            Some('o') => Ok(Command::Insert { at: Some(Motion { count: 1, mo: MotionType::EndOfLine }), new_line: true }),
             Some(op @ ('d' | 'c' | 'y')) => {
                 let m = Motion::parse(&mut cmd.chars().skip(1), Some(op))?;
                 match op {

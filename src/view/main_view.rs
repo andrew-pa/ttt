@@ -45,8 +45,9 @@ impl View {
         active_edge_paint.set_stroke_width(2.0);
         text_style.set_foreground_color(fg_paint_fill.clone());
         pg_style.set_text_style(&text_style);
-        let cursor_paint =
-            create_paint(Color4f::new(0.9, 0.7, 0.1, 0.8), PaintStyle::StrokeAndFill);
+        let mut cursor_paint =
+            create_paint(Color4f::new(0.9, 0.7, 0.1, 0.9), PaintStyle::StrokeAndFill);
+        cursor_paint.set_stroke_width(2.0);
 
         View {
             state: ViewState::new(presenter),
