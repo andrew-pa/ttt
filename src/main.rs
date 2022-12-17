@@ -15,7 +15,7 @@ use skia_safe::{
 };
 use skia_safe::{Color4f, Contains};
 use smallvec::SmallVec;
-use winit::dpi::PhysicalSize;
+use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopBuilder};
 use winit::window::{Window, WindowBuilder};
@@ -126,24 +126,13 @@ impl Renderer {
         self.surface = create_surface(&mut self.gr_context, size, self.num_aa_samples);
     }
 
-    fn render(&mut self, scale_factor: f64, view: &View) {
-        self.t += 0.01f32;
+    fn render(&mut self, scale_factor: f64, view: &View, canvas_size: LogicalSize<f32>) {
         let canvas = self.surface.canvas();
         canvas.reset_matrix();
         canvas.scale((scale_factor as f32, scale_factor as f32));
         canvas.clear(Color4f::new(0.0, 0.0, 0.0, 1.0));
 
-        /*let paint = Paint::new(Color4f::new(1.0, 1.0, 1.0, 1.0), None);
-
-        // canvas.draw_rect(Rect::from_xywh(32.0, 32.0, 64.0, 64.0), &paint);
-        canvas.draw_circle((148.0 + (self.t * 8.0).cos() * 96.0, 148.0), 64.0, &paint);
-
-        let fm = FontMgr::new();
-        let font = Font::new(fm.match_family_style("Inconsolata", FontStyle::normal()).unwrap(), 72.0);
-
-        canvas.draw_str("Hello, world!", (200.0, 200.0), &font, &paint);*/
-
-        view.draw(canvas);
+        view.draw(canvas, canvas_size);
 
         self.gr_context.flush(None);
     }
@@ -296,7 +285,12 @@ fn main() -> anyhow::Result<()> {
             Event::RedrawEventsCleared => {
                 if let Some((gl_context, gl_window)) = &state {
                     let renderer = renderer.as_mut().unwrap();
-                    renderer.render(gl_window.window.scale_factor(), &view);
+                    let scale_factor = gl_window.window.scale_factor();
+                    renderer.render(
+                        scale_factor,
+                        &view,
+                        gl_window.window.inner_size().to_logical(scale_factor),
+                    );
                     gl_window.window.request_redraw();
                     gl_window.surface.swap_buffers(gl_context).unwrap();
                 }

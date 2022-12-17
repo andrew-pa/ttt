@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use crate::{
     model::{Node, NodeId, Tree},
     presenter::Presenter,
@@ -8,10 +10,13 @@ use skia_safe::{
         FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, RectHeightStyle,
         RectWidthStyle, TextStyle,
     },
-    Canvas, Color4f, Font, FontMgr, Paint, PaintStyle, Rect,
+    Canvas, Color4f, Font, FontMgr, ISize, Paint, PaintStyle, Rect,
 };
 
-use winit::event::{KeyboardInput, ModifiersState, WindowEvent};
+use winit::{
+    dpi::LogicalSize,
+    event::{KeyboardInput, ModifiersState, WindowEvent},
+};
 
 use super::*;
 
@@ -29,6 +34,8 @@ pub struct View {
     cur_mode: Box<dyn Mode>,
     mode_just_switched: bool,
     state: ViewState,
+    cur_node_rect: RefCell<Option<Rect>>,
+    screen_y: RefCell<f32>,
 }
 
 impl View {
@@ -38,7 +45,8 @@ impl View {
         let mut pg_style = ParagraphStyle::new();
         let mut text_style = TextStyle::new();
         let fg_paint_fill = create_paint(Color4f::new(1.0, 1.0, 0.9, 1.0), PaintStyle::Fill);
-        let mut edge_paint = create_paint(Color4f::new(0.5, 0.5, 0.5, 1.0), PaintStyle::StrokeAndFill);
+        let mut edge_paint =
+            create_paint(Color4f::new(0.5, 0.5, 0.5, 1.0), PaintStyle::StrokeAndFill);
         edge_paint.set_stroke_width(1.0);
         let mut active_edge_paint =
             create_paint(Color4f::new(0.9, 0.6, 0.1, 1.0), PaintStyle::StrokeAndFill);
@@ -60,6 +68,8 @@ impl View {
             cursor_paint,
             mods: ModifiersState::empty(),
             mode_just_switched: false,
+            cur_node_rect: RefCell::default(),
+            screen_y: RefCell::new(0.0),
         }
     }
 
@@ -133,6 +143,12 @@ impl View {
         let mut pg = pg.build();
         pg.layout(canvas_size.width as f32 - cur_x - 8.0);
 
+        if node_id == self.state.cur_node {
+            let r = Rect::from_xywh(cur_x, cur_y, pg.max_width(), pg.height());
+            *self.cur_node_rect.borrow_mut() = Some(r);
+            // canvas.draw_rect(r, &self.active_edge_paint);
+        }
+
         // draw the node's text
         pg.paint(canvas, (cur_x, cur_y));
 
@@ -151,12 +167,8 @@ impl View {
 
         if self.state.folded_nodes.contains(&node_id) {
             // draw the vertical line from the top of this node to the bottom
-            let bottom = (cur_x - 4.0, cur_y+pg.height());
-            canvas.draw_line(
-                (cur_x - 4.0, cur_y),
-                bottom,
-                paint,
-            );
+            let bottom = (cur_x - 4.0, cur_y + pg.height());
+            canvas.draw_line((cur_x - 4.0, cur_y), bottom, paint);
 
             canvas.draw_circle(bottom, 2.0, &paint);
 
@@ -169,7 +181,7 @@ impl View {
             let mut last_c_h = cur_y + pg.height();
             let mut last_c_m = 0.0;
             for child in node.children.iter() {
-                let (w, h, m) = self.draw_node(canvas, model, *child, ccur_x, ccur_y, cur_x);
+                let (_, h, m) = self.draw_node(canvas, model, *child, ccur_x, ccur_y, cur_x);
                 last_c_h = ccur_y;
                 last_c_m = m;
                 ccur_y += h + 8.0;
@@ -177,8 +189,7 @@ impl View {
 
             let h = ccur_y - cur_y - 8.0;
 
-            // draw the vertical line from the top of this node to the horizontal edge line for its
-            // last child
+            // draw the vertical line from the top of this node to the horizontal edge line for its last child
             canvas.draw_line(
                 (cur_x - 4.0, cur_y),
                 (cur_x - 4.0, last_c_h + last_c_m),
@@ -189,17 +200,39 @@ impl View {
         }
     }
 
-    pub fn draw(&self, canvas: &mut Canvas) {
+    fn update_scroll(&self, screen_size: LogicalSize<f32>, canvas: &mut Canvas) {
+        let top = (screen_size.height as f32) * (1.0 / 12.0);
+        let bottom = (screen_size.height as f32) * (11.0 / 12.0);
+        let cur_node_rect = self.cur_node_rect.borrow().unwrap();
+        // canvas.draw_line((0.0, top), (screen_size.width as f32, top), &self.edge_paint);
+        // canvas.draw_line((0.0, bottom), (screen_size.width as f32, bottom), &self.edge_paint);
+        if cur_node_rect.top() < top {
+            *self.screen_y.borrow_mut() += top - cur_node_rect.top;
+        } else if cur_node_rect.bottom() > bottom {
+            *self.screen_y.borrow_mut() += bottom - cur_node_rect.bottom();
+        }
+    }
+
+    pub fn draw(&self, canvas: &mut Canvas, canvas_size: LogicalSize<f32>) {
         let model = self.state.presenter.model();
 
-        self.draw_node(canvas, model, model.root_id(), 32.0, 32.0, 0.0);
+        self.draw_node(
+            canvas,
+            model,
+            model.root_id(),
+            32.0,
+            32.0 + *self.screen_y.borrow(),
+            0.0,
+        );
 
         canvas.draw_str(
             self.cur_mode.name(),
-            (8, canvas.base_layer_size().height - 16),
+            (8.0, canvas_size.height - 16.0),
             &Font::default(),
             &self.fg_paint_fill,
         );
+
+        self.update_scroll(canvas_size, canvas);
     }
 
     pub fn process_event(&mut self, e: WindowEvent) {
