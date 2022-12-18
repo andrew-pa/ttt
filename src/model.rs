@@ -104,7 +104,12 @@ impl Tree {
         }
     }
 
-    pub fn reparent_node(&mut self, node: NodeId, new_parent: NodeId, after: Option<NodeId>) {
+    pub fn reparent_node(
+        &mut self,
+        node: NodeId,
+        new_parent: NodeId,
+        next_to: Option<(NodeId, bool)>,
+    ) {
         if let Some(parent) = self.node(node).parent() {
             let parent = self.node_mut(parent);
             parent.children.retain(|n| *n != node);
@@ -113,18 +118,21 @@ impl Tree {
         self.node_mut(node).parent = new_parent;
 
         if new_parent != ROOT_PARENT_ID {
-            if let Some(after) = after {
-                let after_ix = self.nodes[&new_parent]
+            if let Some((next_to, before_or_after)) = next_to {
+                let nx_to_ix = self.nodes[&new_parent]
                     .children
                     .iter()
                     .enumerate()
-                    .find_map(|(i, n)| if *n == after { Some(i) } else { None })
-                    .expect("after is child of parent");
-                self.nodes
-                    .get_mut(&new_parent)
-                    .unwrap()
-                    .children
-                    .insert(after_ix + 1, node);
+                    .find_map(|(i, n)| if *n == next_to { Some(i) } else { None })
+                    .expect("next_to is child of parent");
+                self.nodes.get_mut(&new_parent).unwrap().children.insert(
+                    if before_or_after {
+                        nx_to_ix
+                    } else {
+                        nx_to_ix + 1
+                    },
+                    node,
+                );
             } else {
                 self.node_mut(new_parent).children.push(node);
             }

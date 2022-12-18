@@ -25,7 +25,9 @@ impl super::Mode for TreeMode {
                         view_state.presenter.swap_node(view_state.cur_node, -1);
                     }
                     VirtualKeyCode::L => {}
-                    VirtualKeyCode::H => {}
+                    VirtualKeyCode::H => {
+                        view_state.presenter.make_child_sibling(view_state.cur_node);
+                    }
                     _ => {}
                 }
             } else {
@@ -85,8 +87,11 @@ impl super::Mode for TreeMode {
                             view_state.cur_node = nn;
                         }
                     }
-                    VirtualKeyCode::T => {
+                    VirtualKeyCode::F => {
                         view_state.toggle_folded();
+                    }
+                    VirtualKeyCode::R => {
+                        view_state.presenter.set_current_root(view_state.cur_node);
                     }
                     _ => {}
                 }

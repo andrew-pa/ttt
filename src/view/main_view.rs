@@ -120,9 +120,9 @@ impl View {
         cur_x: f32,
         cur_y: f32,
         par_x: f32,
+        canvas_size: LogicalSize<f32>,
     ) -> (f32, f32, f32) {
         let node = model.node(node_id);
-        let canvas_size = canvas.base_layer_size();
 
         let paint = if node_id == self.state.cur_node {
             &self.active_edge_paint
@@ -181,7 +181,8 @@ impl View {
             let mut last_c_h = cur_y + pg.height();
             let mut last_c_m = 0.0;
             for child in node.children.iter() {
-                let (_, h, m) = self.draw_node(canvas, model, *child, ccur_x, ccur_y, cur_x);
+                let (_, h, m) =
+                    self.draw_node(canvas, model, *child, ccur_x, ccur_y, cur_x, canvas_size);
                 last_c_h = ccur_y;
                 last_c_m = m;
                 ccur_y += h + 8.0;
@@ -200,7 +201,7 @@ impl View {
         }
     }
 
-    fn update_scroll(&self, screen_size: LogicalSize<f32>, canvas: &mut Canvas) {
+    fn update_scroll(&self, screen_size: LogicalSize<f32>) {
         let top = (screen_size.height as f32) * (1.0 / 12.0);
         let bottom = (screen_size.height as f32) * (11.0 / 12.0);
         let cur_node_rect = self.cur_node_rect.borrow().unwrap();
@@ -219,10 +220,11 @@ impl View {
         self.draw_node(
             canvas,
             model,
-            model.root_id(),
+            self.state.presenter.current_root(),
             32.0,
             32.0 + *self.screen_y.borrow(),
             0.0,
+            canvas_size,
         );
 
         canvas.draw_str(
@@ -232,7 +234,9 @@ impl View {
             &self.fg_paint_fill,
         );
 
-        self.update_scroll(canvas_size, canvas);
+        self.draw_parent_chain(canvas, (8.0, 16.0), canvas_size);
+
+        self.update_scroll(canvas_size);
     }
 
     pub fn process_event(&mut self, e: WindowEvent) {
@@ -260,6 +264,44 @@ impl View {
             }
             _ => {}
         }
+    }
+
+    fn draw_parent_chain(
+        &self,
+        canvas: &mut Canvas,
+        position: (f32, f32),
+        canvas_size: LogicalSize<f32>,
+    ) {
+        fn trunc_str(s: &str) -> String {
+            // TODO: round to char boundary
+            let mut end = s.len().min(15);
+            if let Some(n) = s.find('\n') {
+                end = end.min(n);
+            }
+            let mut r = s[0..end].to_owned();
+            if s.len() > 15 {
+                r += "…";
+            }
+            r
+        }
+
+        let tree = self.state.presenter.model();
+        let mut strs = Vec::new();
+        let mut cur_node = self.state.presenter.current_root();
+        strs.push(trunc_str(&tree.node(cur_node).text));
+        while let Some(parent) = tree.node(cur_node).parent() {
+            cur_node = parent;
+            strs.push(trunc_str(&tree.node(cur_node).text));
+        }
+        let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
+        pg.push_style(&self.pg_style.text_style());
+        for s in strs.into_iter().rev() {
+            pg.add_text(" > ");
+            pg.add_text(s);
+        }
+        let mut pg = pg.build();
+        pg.layout(canvas_size.width - position.0);
+        pg.paint(canvas, position);
     }
 }
 

@@ -2,6 +2,7 @@ use crate::model::{NodeId, Tree, ROOT_PARENT_ID};
 
 pub struct Presenter {
     tree: Tree,
+    current_root: NodeId,
     snip_stack_nodes: Vec<NodeId>,
     snip_stack_strs: Vec<String>,
 }
@@ -28,6 +29,7 @@ impl Presenter {
 
         Presenter {
             tree,
+            current_root: root,
             snip_stack_nodes: Vec::new(),
             snip_stack_strs: Vec::new(),
         }
@@ -35,6 +37,15 @@ impl Presenter {
 
     pub fn model(&self) -> &Tree {
         &self.tree
+    }
+
+    pub fn current_root(&self) -> NodeId {
+        self.current_root
+    }
+
+    pub fn set_current_root(&mut self, new_root: NodeId) {
+        assert!(self.tree.nodes.contains_key(&new_root));
+        self.current_root = new_root;
     }
 
     pub fn insert_node_in_parent(&mut self, cur_node: NodeId) -> Option<NodeId> {
@@ -72,7 +83,8 @@ impl Presenter {
     ) -> Option<NodeId> {
         if consume {
             self.snip_stack_nodes.pop().map(|n| {
-                self.tree.reparent_node(n, parent, after);
+                self.tree
+                    .reparent_node(n, parent, after.map(|n| (n, false)));
                 n
             })
         } else {
@@ -109,5 +121,15 @@ impl Presenter {
 
     pub fn top_snip_str(&self) -> Option<&String> {
         self.snip_stack_strs.last()
+    }
+
+    /// move the node from being a child of its parent to a sibling of its parent
+    pub fn make_child_sibling(&mut self, node: usize) {
+        if let Some(parent) = self.tree.node(node).parent() {
+            if let Some(grandparent) = self.tree.node(parent).parent() {
+                self.tree
+                    .reparent_node(node, grandparent, Some((parent, true)));
+            }
+        }
     }
 }

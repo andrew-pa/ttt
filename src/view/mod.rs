@@ -52,13 +52,14 @@ impl ViewState {
     }
 
     pub fn move_to_prev_child(&mut self) {
-        if let Some(prev_child) = self
-            .presenter
-            .model()
-            .prev_child(self.cur_node)
-            .or_else(|| self.presenter.model().node(self.cur_node).parent())
-        {
+        if let Some(prev_child) = self.presenter.model().prev_child(self.cur_node) {
             self.cur_node = prev_child;
+        } else {
+            // TODO: sometimes when the current root is not the tree global root we
+            // should be exiting up a level and changing the current root, but we don't
+            // because prev_child() doesn't stop until it gets to the global root.
+            // Some kind of tree slice could probably fix this?
+            self.exit_node();
         }
     }
 
@@ -70,6 +71,9 @@ impl ViewState {
 
     pub fn exit_node(&mut self) {
         if let Some(exit_node) = self.presenter.model().node(self.cur_node).parent() {
+            if self.cur_node == self.presenter.current_root() {
+                self.presenter.set_current_root(exit_node);
+            }
             self.cur_node = exit_node;
         }
     }
