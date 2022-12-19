@@ -28,6 +28,8 @@ pub struct View {
     edge_paint: Paint,
     active_edge_paint: Paint,
     cursor_paint: Paint,
+    root_path_sep_style: TextStyle,
+    root_path_text_style: TextStyle,
 
     mods: ModifiersState,
 
@@ -40,10 +42,6 @@ pub struct View {
 
 impl View {
     pub fn new(presenter: Presenter) -> View {
-        let mut font_collection = FontCollection::new();
-        font_collection.set_default_font_manager(FontMgr::new(), Some("Helvetica"));
-        let mut pg_style = ParagraphStyle::new();
-        let mut text_style = TextStyle::new();
         let fg_paint_fill = create_paint(Color4f::new(1.0, 1.0, 0.9, 1.0), PaintStyle::Fill);
         let mut edge_paint =
             create_paint(Color4f::new(0.5, 0.5, 0.5, 1.0), PaintStyle::StrokeAndFill);
@@ -51,11 +49,27 @@ impl View {
         let mut active_edge_paint =
             create_paint(Color4f::new(0.9, 0.6, 0.1, 1.0), PaintStyle::StrokeAndFill);
         active_edge_paint.set_stroke_width(2.0);
-        text_style.set_foreground_color(fg_paint_fill.clone());
-        pg_style.set_text_style(&text_style);
         let mut cursor_paint =
             create_paint(Color4f::new(0.9, 0.7, 0.1, 0.9), PaintStyle::StrokeAndFill);
         cursor_paint.set_stroke_width(2.0);
+
+        let mut font_collection = FontCollection::new();
+        font_collection.set_default_font_manager(FontMgr::new(), Some("Helvetica"));
+
+        let mut text_style = TextStyle::new();
+        text_style.set_foreground_color(fg_paint_fill.clone());
+        text_style.set_font_size(14.0);
+
+        let root_path_font_size = 10.0;
+        let mut root_path_sep_style = TextStyle::new();
+        root_path_sep_style.set_foreground_color(edge_paint.clone());
+        root_path_sep_style.set_font_size(root_path_font_size);
+        let mut root_path_text_style = TextStyle::new();
+        root_path_text_style.set_foreground_color(fg_paint_fill.clone());
+        root_path_text_style.set_font_size(root_path_font_size);
+
+        let mut pg_style = ParagraphStyle::new();
+        pg_style.set_text_style(&text_style);
 
         View {
             state: ViewState::new(presenter),
@@ -70,6 +84,8 @@ impl View {
             mode_just_switched: false,
             cur_node_rect: RefCell::default(),
             screen_y: RefCell::new(0.0),
+            root_path_sep_style,
+            root_path_text_style,
         }
     }
 
@@ -294,9 +310,11 @@ impl View {
             strs.push(trunc_str(&tree.node(cur_node).text));
         }
         let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
-        pg.push_style(&self.pg_style.text_style());
+        pg.push_style(&self.root_path_text_style);
         for s in strs.into_iter().rev() {
+            pg.push_style(&self.root_path_sep_style);
             pg.add_text(" > ");
+            pg.pop();
             pg.add_text(s);
         }
         let mut pg = pg.build();
