@@ -311,6 +311,9 @@ impl View {
         }
         let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
         pg.push_style(&self.root_path_text_style);
+        if let Some(n) = self.state.presenter.storage_name() {
+            pg.add_text(n);
+        }
         for s in strs.into_iter().rev() {
             pg.push_style(&self.root_path_sep_style);
             pg.add_text(" > ");

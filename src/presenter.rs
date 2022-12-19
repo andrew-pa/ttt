@@ -1,7 +1,11 @@
-use crate::model::{NodeId, Tree, ROOT_PARENT_ID};
+use crate::{
+    model::{NodeId, Tree, ROOT_PARENT_ID},
+    storage::Storage,
+};
 
 pub struct Presenter {
     tree: Tree,
+    storage: Option<Box<dyn Storage>>,
     current_root: NodeId,
     snip_stack_nodes: Vec<NodeId>,
     snip_stack_strs: Vec<String>,
@@ -29,10 +33,17 @@ impl Presenter {
 
         Presenter {
             tree,
+            storage: Some(Box::new(crate::storage::LocalStorage::open(
+                "./test.ron".into(),
+            ))),
             current_root: root,
             snip_stack_nodes: Vec::new(),
             snip_stack_strs: Vec::new(),
         }
+    }
+
+    pub fn storage_name(&self) -> Option<String> {
+        self.storage.as_ref().map(|s| s.src_name())
     }
 
     pub fn model(&self) -> &Tree {
@@ -130,6 +141,12 @@ impl Presenter {
                 self.tree
                     .reparent_node(node, grandparent, Some((parent, true)));
             }
+        }
+    }
+
+    pub fn manual_sync(&mut self) {
+        if let Some(s) = self.storage.as_mut() {
+            s.sync(&mut self.tree).expect("sync");
         }
     }
 }

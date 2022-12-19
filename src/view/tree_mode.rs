@@ -93,6 +93,9 @@ impl super::Mode for TreeMode {
                     VirtualKeyCode::R => {
                         view_state.presenter.set_current_root(view_state.cur_node);
                     }
+                    VirtualKeyCode::S => {
+                        view_state.presenter.manual_sync();
+                    }
                     _ => {}
                 }
             }

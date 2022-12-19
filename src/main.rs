@@ -22,6 +22,7 @@ use winit::window::{Window, WindowBuilder};
 
 mod model;
 mod presenter;
+mod storage;
 mod view;
 
 use presenter::Presenter;

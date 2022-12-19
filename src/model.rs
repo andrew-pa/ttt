@@ -1,9 +1,11 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 pub type NodeId = usize;
 
 pub const ROOT_PARENT_ID: NodeId = 0;
 
+#[derive(Serialize, Deserialize)]
 pub struct Node {
     pub id: NodeId,
     pub text: String,
@@ -21,6 +23,7 @@ impl Node {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Tree {
     next_id: NodeId,
     root_id: NodeId,
