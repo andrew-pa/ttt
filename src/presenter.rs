@@ -33,7 +33,7 @@ impl Presenter {
 
         Presenter {
             tree,
-            storage: Some(Box::new(crate::storage::LocalStorage::open(
+            storage: Some(Box::new(crate::storage::LocalStorage::new(
                 "./test.ron".into(),
             ))),
             current_root: root,

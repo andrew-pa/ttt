@@ -1,8 +1,10 @@
 use crate::model::Tree;
+use anyhow::Result;
 
 pub trait Storage {
     fn src_name(&self) -> String;
-    fn sync(&mut self, model: &mut Tree) -> anyhow::Result<()>;
+    fn load(&mut self) -> Result<Option<Tree>>;
+    fn sync(&mut self, model: &mut Tree) -> Result<()>;
 }
 
 mod local_storage;
