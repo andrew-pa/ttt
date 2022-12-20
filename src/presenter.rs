@@ -1,7 +1,12 @@
+use std::path::PathBuf;
+
 use crate::{
     model::{NodeId, Tree, ROOT_PARENT_ID},
     storage::Storage,
 };
+
+use anyhow::Result;
+use url::Url;
 
 pub struct Presenter {
     tree: Tree,
@@ -147,6 +152,45 @@ impl Presenter {
     pub fn manual_sync(&mut self) {
         if let Some(s) = self.storage.as_mut() {
             s.sync(&mut self.tree).expect("sync");
+        }
+    }
+
+    pub fn process_command(&mut self, cmd: String) -> Result<()> {
+        let mut parts = cmd.split(" ");
+        match parts.next() {
+            Some("e") => {
+                // TODO: should we sync the previously open tree?
+                let src= local_path_or_url(parts.next().ok_or_else(|| anyhow::anyhow!("missing URL"))?)?;
+                match src {
+                    StorageLocation::LocalPath(path) => {
+                        let mut ns = crate::storage::LocalStorage::new(path);
+                        self.tree = ns.load()?.unwrap_or_default();
+                        self.storage = Some(Box::new(ns));
+                        Ok(())
+                    }
+                    _ => todo!()
+                }
+            },
+            Some(cmd) => Err(anyhow::anyhow!("unknown command: {cmd}")),
+            None => Err(anyhow::anyhow!("empty command"))
+        }
+    }
+}
+
+enum StorageLocation {
+    LocalPath(PathBuf),
+    Url(Url)
+}
+
+fn local_path_or_url(s: &str) -> Result<StorageLocation, url::ParseError> {
+    if s.starts_with(".") || s.starts_with("~") {
+        Ok(StorageLocation::LocalPath(s.into()))
+    } else {
+        let url = Url::parse(s)?;
+        if url.scheme() == "file" {
+            Ok(StorageLocation::LocalPath(url.path().into()))
+        } else {
+            Ok(StorageLocation::Url(url))
         }
     }
 }

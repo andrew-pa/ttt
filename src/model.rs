@@ -30,6 +30,14 @@ pub struct Tree {
     pub nodes: HashMap<NodeId, Node>,
 }
 
+impl Default for Tree {
+    fn default() -> Self {
+        let mut t = Tree::new();
+        t.add_node(String::new(), ROOT_PARENT_ID);
+        t
+    }
+}
+
 impl Tree {
     pub fn new() -> Tree {
         Tree {

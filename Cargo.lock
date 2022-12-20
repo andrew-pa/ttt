@@ -1338,6 +1338,7 @@ dependencies = [
  "skia-safe",
  "smallvec",
  "thiserror",
+ "url",
  "winit",
 ]
 

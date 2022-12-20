@@ -94,7 +94,13 @@ impl ViewState {
 
     pub fn process_command(&mut self) {
         let (_, cmd_rope) = self.cur_cmd.take().expect("was editing a command");
-        todo!()
+        match self.presenter.process_command(cmd_rope.into()) {
+            Ok(()) => {},
+            Err(e) => {
+                // TODO: display errors in GUI
+                println!("command process error: {e}");
+            }
+        }
     }
 
     pub fn process_normal_cmd(&mut self, cmd: Command) -> Option<Box<dyn Mode>> {

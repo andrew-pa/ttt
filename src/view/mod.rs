@@ -10,12 +10,12 @@ mod tree_mode;
 mod view_state;
 pub use view_state::ViewState;
 
-enum CursorShape {
+pub enum CursorShape {
     Block,
     Line,
 }
 
-trait Mode {
+pub trait Mode {
     fn process_key(
         &mut self,
         input: &KeyboardInput,
@@ -25,9 +25,9 @@ trait Mode {
 
     fn process_char(
         &mut self,
-        c: char,
-        mods: &ModifiersState,
-        view_state: &mut ViewState,
+        _c: char,
+        _mods: &ModifiersState,
+        _view_state: &mut ViewState,
     ) -> Option<Box<dyn Mode>> {
         None
     }
