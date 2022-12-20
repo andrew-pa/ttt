@@ -19,6 +19,7 @@ use winit::{
 };
 
 use super::*;
+use ropey::Rope;
 
 pub struct View {
     font_collection: FontCollection,
@@ -335,12 +336,14 @@ impl View {
         if let Some(n) = self.state.presenter.storage_name() {
             pg.add_text(n);
         }
+
         for s in strs.into_iter().rev() {
             pg.push_style(&self.root_path_sep_style);
             pg.add_text(" > ");
             pg.pop();
             pg.add_text(s);
         }
+
         let mut pg = pg.build();
         pg.layout(canvas_size.width - position.0);
         pg.paint(canvas, position);
