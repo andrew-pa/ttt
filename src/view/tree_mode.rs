@@ -1,4 +1,4 @@
-use super::{edit_mode::EditMode, insert_mode::InsertMode, Mode, ViewState};
+use super::{cmd_mode::CmdMode, edit_mode::EditMode, insert_mode::InsertMode, Mode, ViewState};
 use crate::{model::ROOT_PARENT_ID, presenter::Presenter};
 use winit::event::{ElementState, KeyboardInput, ModifiersState, VirtualKeyCode, WindowEvent};
 
@@ -92,6 +92,10 @@ impl super::Mode for TreeMode {
                     }
                     VirtualKeyCode::R => {
                         view_state.presenter.set_current_root(view_state.cur_node);
+                    }
+                    VirtualKeyCode::Semicolon if mods.contains(ModifiersState::SHIFT) => {
+                        view_state.begin_command_edit();
+                        return Some(Box::new(CmdMode::default()));
                     }
                     VirtualKeyCode::S => {
                         view_state.presenter.manual_sync();

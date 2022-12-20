@@ -5,6 +5,7 @@ use winit::event::{KeyboardInput, ModifiersState, WindowEvent};
 
 use crate::{model::NodeId, presenter::Presenter};
 
+mod cmd_mode;
 mod edit_mode;
 mod insert_mode;
 mod main_view;
@@ -20,6 +21,7 @@ struct ViewState {
     presenter: Presenter,
     cur_node: NodeId,
     cur_edit: Option<(usize, Rope)>,
+    cur_cmd: Option<(usize, Rope)>,
     folded_nodes: HashSet<NodeId>,
 }
 
@@ -29,6 +31,7 @@ impl ViewState {
             cur_node: presenter.model().root_id(),
             presenter,
             cur_edit: None,
+            cur_cmd: None,
             folded_nodes: HashSet::new(),
         }
     }
@@ -90,6 +93,20 @@ impl ViewState {
         let (_, new_text) = self.cur_edit.take().expect("was editing");
         self.presenter
             .update_node_text(self.cur_node, new_text.to_string());
+    }
+
+    pub fn begin_command_edit(&mut self) {
+        assert!(self.cur_cmd.is_none());
+        self.cur_cmd = Some((0, Rope::new()));
+    }
+
+    pub fn abort_command_edit(&mut self) {
+        self.cur_cmd = None;
+    }
+
+    pub fn process_command(&mut self) {
+        let (_, cmd_rope) = self.cur_cmd.take().expect("was editing a command");
+        todo!()
     }
 
     pub fn process_normal_cmd(&mut self, cmd: motion::Command) -> Option<Box<dyn Mode>> {

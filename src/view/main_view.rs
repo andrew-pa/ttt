@@ -10,7 +10,7 @@ use skia_safe::{
         FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, RectHeightStyle,
         RectWidthStyle, TextStyle,
     },
-    Canvas, Color4f, Font, FontMgr, ISize, Paint, PaintStyle, Rect,
+    Canvas, Color4f, Font, FontMgr, FontStyle, ISize, Paint, PaintStyle, Rect,
 };
 
 use winit::{
@@ -24,6 +24,7 @@ pub struct View {
     font_collection: FontCollection,
     pg_style: ParagraphStyle,
 
+    cmd_bg_paint: Paint,
     fg_paint_fill: Paint,
     edge_paint: Paint,
     active_edge_paint: Paint,
@@ -52,6 +53,7 @@ impl View {
         let mut cursor_paint =
             create_paint(Color4f::new(0.9, 0.7, 0.1, 0.9), PaintStyle::StrokeAndFill);
         cursor_paint.set_stroke_width(2.0);
+        let cmd_bg_paint = create_paint(Color4f::new(0.2, 0.2, 0.2, 1.0), PaintStyle::Fill);
 
         let mut font_collection = FontCollection::new();
         font_collection.set_default_font_manager(FontMgr::new(), Some("Helvetica"));
@@ -76,6 +78,7 @@ impl View {
             cur_mode: Box::new(tree_mode::TreeMode),
             font_collection,
             pg_style,
+            cmd_bg_paint,
             fg_paint_fill,
             edge_paint,
             active_edge_paint,
@@ -230,6 +233,23 @@ impl View {
         }
     }
 
+    fn draw_cmdline(&self, canvas: &mut Canvas, canvas_size: LogicalSize<f32>) {
+        if let Some((cursor_index, cmdline)) = self.state.cur_cmd.as_ref() {
+            let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
+            pg.push_style(&self.pg_style.text_style());
+            add_rope_to_paragraph(&mut pg, cmdline);
+            let mut pg = pg.build();
+            pg.layout(canvas_size.width - 16.0);
+            let ypos = canvas_size.height - 24.0;
+            canvas.draw_rect(
+                Rect::from_xywh(0.0, ypos, canvas_size.width, pg.height()),
+                &self.cmd_bg_paint,
+            );
+            pg.paint(canvas, (8.0, ypos));
+            self.draw_cursor(canvas, &pg, *cursor_index, cmdline, 8.0, ypos);
+        }
+    }
+
     pub fn draw(&self, canvas: &mut Canvas, canvas_size: LogicalSize<f32>) {
         let model = self.state.presenter.model();
 
@@ -243,14 +263,9 @@ impl View {
             canvas_size,
         );
 
-        canvas.draw_str(
-            self.cur_mode.name(),
-            (8.0, canvas_size.height - 16.0),
-            &Font::default(),
-            &self.fg_paint_fill,
-        );
+        self.draw_status_line(canvas, (8.0, 16.0), canvas_size);
 
-        self.draw_parent_chain(canvas, (8.0, 16.0), canvas_size);
+        self.draw_cmdline(canvas, canvas_size);
 
         self.update_scroll(canvas_size);
     }
@@ -282,7 +297,7 @@ impl View {
         }
     }
 
-    fn draw_parent_chain(
+    fn draw_status_line(
         &self,
         canvas: &mut Canvas,
         position: (f32, f32),
@@ -311,6 +326,12 @@ impl View {
         }
         let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
         pg.push_style(&self.root_path_text_style);
+
+        pg.push_style(&self.root_path_sep_style);
+        pg.add_text(self.cur_mode.name());
+        pg.add_text("  ");
+        pg.pop();
+
         if let Some(n) = self.state.presenter.storage_name() {
             pg.add_text(n);
         }
