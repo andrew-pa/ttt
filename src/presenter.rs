@@ -13,6 +13,7 @@ pub struct Presenter {
     current_root: NodeId,
     snip_stack_nodes: Vec<NodeId>,
     snip_stack_strs: Vec<String>,
+    tree_modified: bool,
     should_exit: bool,
 }
 
@@ -34,6 +35,7 @@ impl Presenter {
             snip_stack_nodes: Vec::new(),
             snip_stack_strs: Vec::new(),
             should_exit: false,
+            tree_modified: false,
         })
     }
 
@@ -53,12 +55,17 @@ impl Presenter {
         self.should_exit
     }
 
+    pub fn tree_modified(&self) -> bool {
+        self.tree_modified
+    }
+
     pub fn set_current_root(&mut self, new_root: NodeId) {
         assert!(self.tree.nodes.contains_key(&new_root));
         self.current_root = new_root;
     }
 
     pub fn insert_node_in_parent(&mut self, cur_node: NodeId) -> Option<NodeId> {
+        self.tree_modified = true;
         if let Some(parent) = self.tree.node(cur_node).parent() {
             Some(self.tree.insert_node(String::new(), parent, cur_node))
         } else {
@@ -67,10 +74,12 @@ impl Presenter {
     }
 
     pub fn insert_node_as_child(&mut self, cur_node: NodeId) -> NodeId {
+        self.tree_modified = true;
         self.tree.add_node(String::new(), cur_node)
     }
 
     pub fn delete_node(&mut self, cur_node: NodeId) -> Option<NodeId> {
+        self.tree_modified = true;
         let p = self.tree.node(cur_node).parent();
         if p.is_some() {
             self.tree.cut_node(cur_node);
@@ -105,6 +114,7 @@ impl Presenter {
     }
 
     pub fn put_node(&mut self, cur_node: NodeId, consume: bool, as_child: bool) -> Option<NodeId> {
+        self.tree_modified = true;
         if !as_child && self.tree.node(cur_node).parent != ROOT_PARENT_ID {
             let p = self.tree.node(cur_node).parent;
             self.move_or_clone_node_from_top_of_snips(consume, p, Some(cur_node))
@@ -115,10 +125,12 @@ impl Presenter {
 
     pub fn swap_node(&mut self, cur_node: NodeId, direction: isize) {
         self.tree.swap_node(cur_node, direction);
+        self.tree_modified = true;
     }
 
     pub fn update_node_text(&mut self, cur_node: usize, new_text: String) {
         self.tree.node_mut(cur_node).text = new_text;
+        self.tree_modified = true;
     }
 
     pub fn copy_str(&mut self, s: String) {
@@ -141,12 +153,15 @@ impl Presenter {
                     .reparent_node(node, grandparent, Some((parent, true)));
             }
         }
+        self.tree_modified = true;
     }
 
-    pub fn manual_sync(&mut self) {
+    pub fn manual_sync(&mut self) -> Result<()> {
         if let Some(s) = self.storage.as_mut() {
-            s.sync(&mut self.tree).expect("sync");
+            s.sync(&mut self.tree)?;
+            self.tree_modified = false;
         }
+        Ok(())
     }
 
     pub fn process_command(&mut self, cmd: String) -> Result<()> {
@@ -159,6 +174,7 @@ impl Presenter {
                 )?;
                 self.tree = tree.unwrap_or_default();
                 self.storage = Some(storage);
+                self.tree_modified = false;
                 Ok(())
             }
             Some("s") => {
@@ -168,10 +184,10 @@ impl Presenter {
                 }
 
                 if let Some(s) = self.storage.as_mut() {
-                    s.sync(&mut self.tree)
-                } else {
-                    Ok(())
+                    s.sync(&mut self.tree)?;
+                    self.tree_modified = false;
                 }
+                Ok(())
             }
             Some("q") => {
                 self.should_exit = true;

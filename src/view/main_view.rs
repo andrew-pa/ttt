@@ -317,6 +317,10 @@ impl View {
                     self.mode_just_switched = false;
                 }
             }
+            WindowEvent::Focused(false) => match self.state.presenter.manual_sync() {
+                Ok(()) => {}
+                Err(e) => self.state.prev_error = Some(e),
+            },
             _ => {}
         }
 
@@ -362,6 +366,10 @@ impl View {
 
         if let Some(n) = self.state.presenter.storage_name() {
             pg.add_text(n);
+        }
+
+        if self.state.presenter.tree_modified() {
+            pg.add_text("*");
         }
 
         for s in strs.into_iter().rev() {
