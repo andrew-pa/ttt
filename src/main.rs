@@ -272,7 +272,7 @@ fn main() -> anyhow::Result<()> {
                 WindowEvent::CloseRequested => {
                     control_flow.set_exit();
                 }
-                e => view.process_event(e),
+                e => view.process_event(e, control_flow),
             },
             Event::RedrawEventsCleared => {
                 if let Some((gl_context, gl_window)) = &state {

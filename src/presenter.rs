@@ -13,6 +13,7 @@ pub struct Presenter {
     current_root: NodeId,
     snip_stack_nodes: Vec<NodeId>,
     snip_stack_strs: Vec<String>,
+    should_exit: bool,
 }
 
 impl Presenter {
@@ -32,6 +33,7 @@ impl Presenter {
             storage,
             snip_stack_nodes: Vec::new(),
             snip_stack_strs: Vec::new(),
+            should_exit: false,
         })
     }
 
@@ -45,6 +47,10 @@ impl Presenter {
 
     pub fn current_root(&self) -> NodeId {
         self.current_root
+    }
+
+    pub fn should_exit(&self) -> bool {
+        self.should_exit
     }
 
     pub fn set_current_root(&mut self, new_root: NodeId) {
@@ -167,7 +173,10 @@ impl Presenter {
                     Ok(())
                 }
             }
-            Some("q") => Ok(()),
+            Some("q") => {
+                self.should_exit = true;
+                Ok(())
+            }
             Some(cmd) => Err(anyhow::anyhow!("unknown command: {cmd}")),
             None => Err(anyhow::anyhow!("empty command")),
         }

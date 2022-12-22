@@ -16,6 +16,7 @@ use skia_safe::{
 use winit::{
     dpi::LogicalSize,
     event::{ElementState, KeyboardInput, ModifiersState, WindowEvent},
+    event_loop::ControlFlow,
 };
 
 use super::*;
@@ -290,7 +291,7 @@ impl View {
         self.update_scroll(canvas_size);
     }
 
-    pub fn process_event(&mut self, e: WindowEvent) {
+    pub fn process_event(&mut self, e: WindowEvent, control_flow: &mut ControlFlow) {
         match e {
             WindowEvent::KeyboardInput { input, .. } => {
                 if self.state.prev_error.is_some() && input.state == ElementState::Pressed {
@@ -317,6 +318,10 @@ impl View {
                 }
             }
             _ => {}
+        }
+
+        if self.state.presenter.should_exit() {
+            control_flow.set_exit();
         }
     }
 
