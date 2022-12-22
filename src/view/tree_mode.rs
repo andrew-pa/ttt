@@ -66,7 +66,9 @@ impl super::Mode for TreeMode {
                         {
                             view_state.cur_node = nn;
                         } else {
-                            view_state.cur_node = view_state.presenter.insert_node_as_child(view_state.cur_node);
+                            view_state.cur_node = view_state
+                                .presenter
+                                .insert_node_as_child(view_state.cur_node);
                         }
                         view_state.begin_editing();
                         return Some(Box::new(InsertMode));
@@ -98,9 +100,6 @@ impl super::Mode for TreeMode {
                     VirtualKeyCode::Semicolon if mods.contains(ModifiersState::SHIFT) => {
                         view_state.begin_command_edit();
                         return Some(Box::new(CmdMode::default()));
-                    }
-                    VirtualKeyCode::S => {
-                        view_state.presenter.manual_sync();
                     }
                     _ => {}
                 }

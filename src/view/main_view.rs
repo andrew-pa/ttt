@@ -15,7 +15,7 @@ use skia_safe::{
 
 use winit::{
     dpi::LogicalSize,
-    event::{KeyboardInput, ModifiersState, WindowEvent},
+    event::{ElementState, KeyboardInput, ModifiersState, WindowEvent},
 };
 
 use super::*;
@@ -32,6 +32,7 @@ pub struct View {
     cursor_paint: Paint,
     root_path_sep_style: TextStyle,
     root_path_text_style: TextStyle,
+    error_style: TextStyle,
 
     mods: ModifiersState,
 
@@ -71,6 +72,13 @@ impl View {
         root_path_text_style.set_foreground_color(fg_paint_fill.clone());
         root_path_text_style.set_font_size(root_path_font_size);
 
+        let mut error_style = TextStyle::new();
+        error_style.set_foreground_color(fg_paint_fill.clone());
+        error_style.set_background_color(create_paint(
+            Color4f::new(1.0, 0.0, 0.0, 1.0),
+            PaintStyle::Fill,
+        ));
+
         let mut pg_style = ParagraphStyle::new();
         pg_style.set_text_style(&text_style);
 
@@ -90,6 +98,7 @@ impl View {
             screen_y: RefCell::new(0.0),
             root_path_sep_style,
             root_path_text_style,
+            error_style,
         }
     }
 
@@ -243,7 +252,7 @@ impl View {
             pg.layout(canvas_size.width - 16.0);
             let ypos = canvas_size.height - 24.0;
             canvas.draw_rect(
-                Rect::from_xywh(0.0, ypos, canvas_size.width, pg.height()),
+                Rect::from_xywh(0.0, ypos - 4.0, canvas_size.width, pg.height() + 8.0),
                 &self.cmd_bg_paint,
             );
             pg.paint(canvas, (8.0, ypos));
@@ -268,12 +277,25 @@ impl View {
 
         self.draw_cmdline(canvas, canvas_size);
 
+        if let Some(err) = self.state.prev_error.as_ref() {
+            let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
+            pg.push_style(&self.error_style);
+            pg.add_text(&format!("error: {} ", err));
+            let mut pg = pg.build();
+            pg.layout(canvas_size.width - 16.0);
+            let ypos = canvas_size.height - 32.0 - pg.height();
+            pg.paint(canvas, (8.0, ypos));
+        }
+
         self.update_scroll(canvas_size);
     }
 
     pub fn process_event(&mut self, e: WindowEvent) {
         match e {
             WindowEvent::KeyboardInput { input, .. } => {
+                if self.state.prev_error.is_some() && input.state == ElementState::Pressed {
+                    self.state.prev_error = None;
+                }
                 if let Some(new_mode) =
                     self.cur_mode
                         .process_key(&input, &self.mods, &mut self.state)

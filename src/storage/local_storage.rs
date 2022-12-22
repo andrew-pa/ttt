@@ -15,7 +15,6 @@ pub struct LocalStorage {
 
 impl LocalStorage {
     pub fn new(path: PathBuf) -> LocalStorage {
-        dbg!(&path);
         LocalStorage { path }
     }
 }

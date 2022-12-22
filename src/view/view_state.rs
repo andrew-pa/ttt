@@ -10,6 +10,7 @@ pub struct ViewState {
     pub cur_node: NodeId,
     pub cur_edit: Option<(usize, Rope)>,
     pub cur_cmd: Option<(usize, Rope)>,
+    pub prev_error: Option<anyhow::Error>,
     pub folded_nodes: HashSet<NodeId>,
 }
 
@@ -20,6 +21,7 @@ impl ViewState {
             presenter,
             cur_edit: None,
             cur_cmd: None,
+            prev_error: None,
             folded_nodes: HashSet::new(),
         }
     }
@@ -95,10 +97,9 @@ impl ViewState {
     pub fn process_command(&mut self) {
         let (_, cmd_rope) = self.cur_cmd.take().expect("was editing a command");
         match self.presenter.process_command(cmd_rope.into()) {
-            Ok(()) => {},
+            Ok(()) => {}
             Err(e) => {
-                // TODO: display errors in GUI
-                println!("command process error: {e}");
+                self.prev_error = Some(e);
             }
         }
     }

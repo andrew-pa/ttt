@@ -2,11 +2,10 @@ use std::path::PathBuf;
 
 use crate::{
     model::{NodeId, Tree, ROOT_PARENT_ID},
-    storage::Storage,
+    storage::{self, Storage},
 };
 
 use anyhow::Result;
-use url::Url;
 
 pub struct Presenter {
     tree: Tree,
@@ -17,34 +16,23 @@ pub struct Presenter {
 }
 
 impl Presenter {
-    pub fn new() -> Presenter {
-        let mut tree = Tree::new();
+    pub fn new() -> Result<Presenter> {
+        let mut args = std::env::args().skip(1);
 
-        let root = tree.add_node("Root node".into(), ROOT_PARENT_ID);
-        tree.add_node("Leaf node 1".into(), root);
-        tree.add_node("Leaf node 2".into(), root);
-        let a = tree.add_node("Interior A".into(), root);
-        tree.add_node("Leaf node 2\nwith two lines!".into(), a);
-        tree.add_node("Leaf node 3".into(), a);
-        tree.add_node("Leaf node 4".into(), root);
-        let b = tree.add_node("Interior B".into(), root);
-        tree.add_node("Leaf node 5\nwith\nthree lines!".into(), b);
-        tree.add_node("Leaf node 6".into(), b);
-        tree.add_node("Leaf node 7".into(), root);
-        let c = tree.add_node("Interior C".into(), b);
-        tree.add_node("Leaf node 8\nwith\nfour\nlines!".into(), c);
-        tree.add_node("Leaf node 9".into(), c);
-        tree.add_node("Leaf node 10".into(), root);
+        let (tree, storage) = if let Some(path) = args.next() {
+            let (t, s) = storage::open_storage(&path)?;
+            (t.unwrap_or_default(), Some(s))
+        } else {
+            (Tree::default(), None)
+        };
 
-        Presenter {
+        Ok(Presenter {
+            current_root: tree.root_id(),
             tree,
-            storage: Some(Box::new(crate::storage::LocalStorage::new(
-                "./test.ron".into(),
-            ))),
-            current_root: root,
+            storage,
             snip_stack_nodes: Vec::new(),
             snip_stack_strs: Vec::new(),
-        }
+        })
     }
 
     pub fn storage_name(&self) -> Option<String> {
@@ -160,37 +148,28 @@ impl Presenter {
         match parts.next() {
             Some("e") => {
                 // TODO: should we sync the previously open tree?
-                let src= local_path_or_url(parts.next().ok_or_else(|| anyhow::anyhow!("missing URL"))?)?;
-                match src {
-                    StorageLocation::LocalPath(path) => {
-                        let mut ns = crate::storage::LocalStorage::new(path);
-                        self.tree = ns.load()?.unwrap_or_default();
-                        self.storage = Some(Box::new(ns));
-                        Ok(())
-                    }
-                    _ => todo!()
+                let (tree, storage) = storage::open_storage(
+                    parts.next().ok_or_else(|| anyhow::anyhow!("missing URL"))?,
+                )?;
+                self.tree = tree.unwrap_or_default();
+                self.storage = Some(storage);
+                Ok(())
+            }
+            Some("s") => {
+                if let Some(new_path) = parts.next() {
+                    let (_, storage) = storage::open_storage(&new_path)?;
+                    self.storage = Some(storage);
                 }
-            },
+
+                if let Some(s) = self.storage.as_mut() {
+                    s.sync(&mut self.tree)
+                } else {
+                    Ok(())
+                }
+            }
+            Some("q") => Ok(()),
             Some(cmd) => Err(anyhow::anyhow!("unknown command: {cmd}")),
-            None => Err(anyhow::anyhow!("empty command"))
-        }
-    }
-}
-
-enum StorageLocation {
-    LocalPath(PathBuf),
-    Url(Url)
-}
-
-fn local_path_or_url(s: &str) -> Result<StorageLocation, url::ParseError> {
-    if s.starts_with(".") || s.starts_with("~") {
-        Ok(StorageLocation::LocalPath(s.into()))
-    } else {
-        let url = Url::parse(s)?;
-        if url.scheme() == "file" {
-            Ok(StorageLocation::LocalPath(url.path().into()))
-        } else {
-            Ok(StorageLocation::Url(url))
+            None => Err(anyhow::anyhow!("empty command")),
         }
     }
 }

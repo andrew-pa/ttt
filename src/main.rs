@@ -142,16 +142,7 @@ impl Renderer {
 fn main() -> anyhow::Result<()> {
     let event_loop = EventLoopBuilder::new().build();
 
-    // Only windows requires the window to be present before creating the display.
-    // Other platforms don't really need one.
-    //
-    // XXX if you don't care about running on android or so you can safely remove
-    // this condition and always pass the window builder.
-    let window_builder = if cfg!(wgl_backend) {
-        Some(WindowBuilder::new().with_transparent(true))
-    } else {
-        None
-    };
+    let window_builder = Some(WindowBuilder::new().with_title("ttt"));
 
     // The template will match only the configurations supporting rendering to
     // windows.
@@ -180,7 +171,7 @@ fn main() -> anyhow::Result<()> {
 
     let num_aa_samples = gl_config.num_samples() as usize;
 
-    println!("Picked a config with {num_aa_samples} samples");
+    // println!("Picked a config with {num_aa_samples} samples");
 
     let raw_window_handle = window.as_ref().map(|window| window.raw_window_handle());
 
@@ -208,7 +199,7 @@ fn main() -> anyhow::Result<()> {
             })
     });
 
-    let mut view = View::new(Presenter::new());
+    let mut view = View::new(Presenter::new()?);
 
     let mut state = None;
     let mut renderer = None;
