@@ -142,6 +142,15 @@ impl Renderer {
 fn main() -> anyhow::Result<()> {
     let event_loop = EventLoopBuilder::new().build();
 
+    #[cfg(target_os = "macos")]
+    unsafe {
+        // work-around for https://github.com/rust-windowing/winit/issues/2051
+        use cocoa::appkit::NSApplication as _;
+        cocoa::appkit::NSApp().setActivationPolicy_(
+            cocoa::appkit::NSApplicationActivationPolicy::NSApplicationActivationPolicyRegular,
+        );
+    }
+
     let window_builder = Some(WindowBuilder::new().with_title("ttt"));
 
     // The template will match only the configurations supporting rendering to
@@ -169,15 +178,7 @@ fn main() -> anyhow::Result<()> {
         })
         .unwrap();
 
-    let num_aa_samples = gl_config.num_samples() as usize;
-
-    // println!("Picked a config with {num_aa_samples} samples");
-
     let raw_window_handle = window.as_ref().map(|window| window.raw_window_handle());
-
-    // XXX The display could be obtained from the any object created by it, so we
-    // can query it from the config.
-    let gl_display = gl_config.display();
 
     // The context creation part. It can be created before surface and that's how
     // it's expected in multithreaded + multiwindow operation mode, since you
@@ -190,10 +191,10 @@ fn main() -> anyhow::Result<()> {
         .with_context_api(ContextApi::Gles(None))
         .build(raw_window_handle);
     let mut not_current_gl_context = Some(unsafe {
-        gl_display
+        gl_config.display()
             .create_context(&gl_config, &context_attributes)
             .unwrap_or_else(|_| {
-                gl_display
+                gl_config.display()
                     .create_context(&gl_config, &fallback_context_attributes)
                     .expect("failed to create context")
             })
@@ -226,7 +227,7 @@ fn main() -> anyhow::Result<()> {
                 // buffers. It also performs function loading, which needs a current context on
                 // WGL.
                 renderer.get_or_insert_with(|| {
-                    Renderer::new(&gl_display, gl_window.window.inner_size(), num_aa_samples)
+                    Renderer::new(&gl_config.display(), gl_window.window.inner_size(), gl_config.num_samples() as usize)
                 });
 
                 // Try setting vsync.

@@ -91,7 +91,7 @@ impl Presenter {
     }
 
     pub fn copy_node(&mut self, cur_node: NodeId) {
-        self.snip_stack_nodes.push(cur_node);
+        self.snip_stack_nodes.push(self.tree.clone_node(cur_node, ROOT_PARENT_ID, None));
     }
 
     fn move_or_clone_node_from_top_of_snips(

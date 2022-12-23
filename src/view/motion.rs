@@ -504,7 +504,7 @@ impl Motion {
                     let mut chars = buf
                         .chars_at((range.end + 1).min(buf.len_chars()))
                         .reversed()
-                        .inspect(|i| println!("{i} {:?}", i.class()))
+                        // .inspect(|i| println!("{i} {:?}", i.class()))
                         .map(CharClassify::class)
                         .peekable();
                     if let Some(_) = chars.next() {
