@@ -30,7 +30,7 @@ impl super::Mode for EditMode {
         match input.virtual_keycode.unwrap() {
             VirtualKeyCode::Escape => {
                 view_state.finish_editing();
-                return Some(Box::new(super::tree_mode::TreeMode));
+                Some(Box::new(super::tree_mode::TreeMode))
             }
             _ => None,
         }

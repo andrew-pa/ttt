@@ -162,7 +162,7 @@ impl View {
 
         // create Skia paragraph for node text
         let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
-        pg.push_style(&self.pg_style.text_style());
+        pg.push_style(self.pg_style.text_style());
         // pg.add_text(format!("{} ", node_id));
         if node_id == self.state.cur_node && self.state.cur_edit.is_some() {
             let (_, text) = self.state.cur_edit.as_ref().unwrap();
@@ -171,7 +171,7 @@ impl View {
             pg.add_text(&node.text);
         }
         let mut pg = pg.build();
-        pg.layout(canvas_size.width as f32 - cur_x - 8.0);
+        pg.layout(canvas_size.width - cur_x - 8.0);
 
         if node_id == self.state.cur_node {
             let r = Rect::from_xywh(cur_x, cur_y, pg.max_width(), pg.height());
@@ -200,7 +200,7 @@ impl View {
             let bottom = (cur_x - 4.0, cur_y + pg.height());
             canvas.draw_line((cur_x - 4.0, cur_y), bottom, paint);
 
-            canvas.draw_circle(bottom, 2.0, &paint);
+            canvas.draw_circle(bottom, 2.0, paint);
 
             (32.0, pg.height(), pg.height() / 2.0)
         } else {
@@ -232,8 +232,8 @@ impl View {
     }
 
     fn update_scroll(&self, screen_size: LogicalSize<f32>) {
-        let top = (screen_size.height as f32) * (1.0 / 12.0);
-        let bottom = (screen_size.height as f32) * (11.0 / 12.0);
+        let top = screen_size.height * (1.0 / 12.0);
+        let bottom = screen_size.height * (11.0 / 12.0);
         let cur_node_rect = self.cur_node_rect.borrow().unwrap();
         // canvas.draw_line((0.0, top), (screen_size.width as f32, top), &self.edge_paint);
         // canvas.draw_line((0.0, bottom), (screen_size.width as f32, bottom), &self.edge_paint);
@@ -247,7 +247,7 @@ impl View {
     fn draw_cmdline(&self, canvas: &mut Canvas, canvas_size: LogicalSize<f32>) {
         if let Some((cursor_index, cmdline)) = self.state.cur_cmd.as_ref() {
             let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
-            pg.push_style(&self.pg_style.text_style());
+            pg.push_style(self.pg_style.text_style());
             add_rope_to_paragraph(&mut pg, cmdline);
             let mut pg = pg.build();
             pg.layout(canvas_size.width - 16.0);
@@ -281,7 +281,7 @@ impl View {
         if let Some(err) = self.state.prev_error.as_ref() {
             let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
             pg.push_style(&self.error_style);
-            pg.add_text(&format!("error: {} ", err));
+            pg.add_text(&format!("error: {err}"));
             let mut pg = pg.build();
             pg.layout(canvas_size.width - 16.0);
             let ypos = canvas_size.height - 32.0 - pg.height();

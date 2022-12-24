@@ -164,7 +164,7 @@ impl Presenter {
     }
 
     pub fn process_command(&mut self, cmd: String) -> Result<()> {
-        let mut parts = cmd.split(" ");
+        let mut parts = cmd.split(' ');
         match parts.next() {
             Some("e") => {
                 // TODO: should we sync the previously open tree?
@@ -178,7 +178,7 @@ impl Presenter {
             }
             Some("s") => {
                 if let Some(new_path) = parts.next() {
-                    let (_, storage) = storage::open_storage(&new_path)?;
+                    let (_, storage) = storage::open_storage(new_path)?;
                     self.storage = Some(storage);
                 }
 

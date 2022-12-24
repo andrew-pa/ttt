@@ -11,9 +11,7 @@ impl super::Mode for TreeMode {
         mods: &ModifiersState,
         view_state: &mut ViewState,
     ) -> Option<Box<dyn Mode>> {
-        if input.virtual_keycode.is_none() {
-            return None;
-        }
+        input.virtual_keycode?;
 
         if input.state == ElementState::Pressed {
             if mods.contains(ModifiersState::CTRL) {

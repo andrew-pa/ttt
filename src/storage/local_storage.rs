@@ -28,7 +28,7 @@ impl Storage for LocalStorage {
             Err(e) => return Err(e.into()),
         };
 
-        ron::de::from_reader(f).map(|t| Some(t)).map_err(Into::into)
+        ron::de::from_reader(f).map(Some).map_err(Into::into)
     }
 
     fn sync(&mut self, model: &mut Tree) -> Result<()> {

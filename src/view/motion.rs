@@ -86,7 +86,7 @@ fn matching_block_char(c: char) -> char {
         '<' => '>',
         '"' => '"',
         '\'' => '\'',
-        _ => panic!("no matching block char for {}", c),
+        _ => panic!("no matching block char for {c}"),
     }
 }
 
@@ -256,13 +256,15 @@ pub enum MotionType {
 
 impl MotionType {
     pub fn inclusive(&self) -> bool {
-        match self {
-            MotionType::NextChar { .. } | MotionType::RepeatNextChar { .. } => true,
-            MotionType::An(_) | MotionType::Inner(_) => true,
-            MotionType::Passthrough(_, _) => true,
-            MotionType::EndOfLine => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            MotionType::NextChar { .. }
+                | MotionType::RepeatNextChar { .. }
+                | MotionType::An(_)
+                | MotionType::Inner(_)
+                | MotionType::Passthrough(_, _)
+                | MotionType::EndOfLine
+        )
     }
 }
 
@@ -290,7 +292,7 @@ impl Motion {
         }
         let mut ch = first.unwrap();
 
-        let count = if ch.is_digit(10) {
+        let count = if ch.is_ascii_digit() {
             let mut num = ch.to_digit(10).unwrap() as usize;
             while let Some(dch) = c.next() {
                 if let Some(d) = dch.to_digit(10) {
@@ -507,7 +509,7 @@ impl Motion {
                         // .inspect(|i| println!("{i} {:?}", i.class()))
                         .map(CharClassify::class)
                         .peekable();
-                    if let Some(_) = chars.next() {
+                    if chars.next().is_some() {
                         range.end -= 1;
                         while let Some(CharClass::Whitespace) = chars.peek() {
                             chars.next();
