@@ -33,7 +33,8 @@ pub struct Tree {
 impl Default for Tree {
     fn default() -> Self {
         let mut t = Tree::new();
-        t.add_node(String::new(), ROOT_PARENT_ID);
+        let rid = t.add_node(String::new(), ROOT_PARENT_ID);
+        t.set_root_id(rid);
         t
     }
 }
@@ -51,6 +52,11 @@ impl Tree {
         self.root_id
     }
 
+    pub fn set_root_id(&mut self, id: NodeId) {
+        assert_eq!(self.root_id, 0);
+        self.root_id = id;
+    }
+
     pub fn add_node(&mut self, text: String, parent: NodeId) -> NodeId {
         let id = self.next_id;
         self.next_id += 1;
@@ -65,8 +71,6 @@ impl Tree {
         );
         if parent != ROOT_PARENT_ID {
             self.nodes.get_mut(&parent).unwrap().children.push(id);
-        } else {
-            self.root_id = id;
         }
         id
     }
