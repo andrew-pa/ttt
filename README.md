@@ -2,7 +2,7 @@
 
 A visual Vim-like editor for trees of text blobs, like outlines or nested TODOs.
 
-![image](https://user-images.githubusercontent.com/6148347/206799635-01996d58-2c5d-489d-a29b-c3f5dbedc0c2.png)
+![demo3](https://user-images.githubusercontent.com/6148347/209452362-afbcd66f-c3da-441c-9eae-cad2eba2cd89.gif)
 
 ## Usage
 
@@ -46,7 +46,7 @@ When `ttt` loses focus it will automatically sync the current tree if it has a l
 
 Right now `ttt` supports storing and loading trees locally as text files in the [RON](https://github.com/ron-rs/ron) format.
 
-Storage locations can be specified with URLs or using local paths starting with `.` or `~`. Right now the `file://` protocol is also supported for absolute paths.
+Storage locations in commands can be specified with URLs or using local paths starting with `.` or `~`. Right now the `file://` protocol is also supported for absolute paths. An initial location can be specified as a command line argument.
 
 ## Building
 
