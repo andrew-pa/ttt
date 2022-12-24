@@ -130,7 +130,7 @@ impl ViewState {
                 let r = m.range(buf, *cursor_index, 1, &mut None);
                 self.presenter.copy_str(buf.slice(r.clone()).to_string());
             }
-            Command::Put { consume } => {
+            Command::Put { consume: _ } => {
                 if let Some(s) = self.presenter.pop_snip_str() {
                     buf.insert(*cursor_index, &s);
                 }

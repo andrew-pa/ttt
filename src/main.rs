@@ -1,4 +1,4 @@
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::num::NonZeroU32;
 
 use glutin::config::{Config, ConfigTemplateBuilder};
@@ -10,14 +10,12 @@ use glutin_winit::DisplayBuilder;
 use raw_window_handle::HasRawWindowHandle;
 use skia_safe::gpu::gl::FramebufferInfo;
 use skia_safe::gpu::BackendRenderTarget;
-use skia_safe::{
-    Color, ColorType, Font, FontMgr, FontStyle, Matrix, Paint, PaintStyle, Point, Rect, Surface,
-};
-use skia_safe::{Color4f, Contains};
-use smallvec::SmallVec;
+use skia_safe::Color4f;
+use skia_safe::{ColorType, Surface};
+
 use winit::dpi::{LogicalSize, PhysicalSize};
 use winit::event::{Event, WindowEvent};
-use winit::event_loop::{ControlFlow, EventLoopBuilder};
+use winit::event_loop::EventLoopBuilder;
 use winit::window::{Window, WindowBuilder};
 
 mod model;
@@ -60,7 +58,6 @@ struct Renderer {
     gr_context: skia_safe::gpu::DirectContext,
     surface: Surface,
     num_aa_samples: usize,
-    t: f32,
 }
 
 fn get_fb_info() -> FramebufferInfo {
@@ -119,7 +116,6 @@ impl Renderer {
             gr_context,
             surface,
             num_aa_samples,
-            t: 0.0,
         }
     }
 
@@ -191,10 +187,12 @@ fn main() -> anyhow::Result<()> {
         .with_context_api(ContextApi::Gles(None))
         .build(raw_window_handle);
     let mut not_current_gl_context = Some(unsafe {
-        gl_config.display()
+        gl_config
+            .display()
             .create_context(&gl_config, &context_attributes)
             .unwrap_or_else(|_| {
-                gl_config.display()
+                gl_config
+                    .display()
                     .create_context(&gl_config, &fallback_context_attributes)
                     .expect("failed to create context")
             })
@@ -227,7 +225,11 @@ fn main() -> anyhow::Result<()> {
                 // buffers. It also performs function loading, which needs a current context on
                 // WGL.
                 renderer.get_or_insert_with(|| {
-                    Renderer::new(&gl_config.display(), gl_window.window.inner_size(), gl_config.num_samples() as usize)
+                    Renderer::new(
+                        &gl_config.display(),
+                        gl_window.window.inner_size(),
+                        gl_config.num_samples() as usize,
+                    )
                 });
 
                 // Try setting vsync.

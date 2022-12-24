@@ -1,6 +1,6 @@
 use super::{cmd_mode::CmdMode, edit_mode::EditMode, insert_mode::InsertMode, Mode, ViewState};
-use crate::{model::ROOT_PARENT_ID, presenter::Presenter};
-use winit::event::{ElementState, KeyboardInput, ModifiersState, VirtualKeyCode, WindowEvent};
+
+use winit::event::{ElementState, KeyboardInput, ModifiersState, VirtualKeyCode};
 
 pub struct TreeMode;
 

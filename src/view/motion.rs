@@ -760,7 +760,7 @@ mod tests {
     use super::*;
 
     fn create_line_test_buffer() -> Rope {
-        let mut b = Rope::from_str("abc\ndef\nghi\n");
+        let b = Rope::from_str("abc\ndef\nghi\n");
         b
     }
     fn create_word_test_buffer() -> Rope {
@@ -1058,7 +1058,7 @@ mod tests {
 
     #[test]
     fn txo_object_a_word() {
-        let mut b = Rope::from_str(" word   w0rd wr+d");
+        let b = Rope::from_str(" word   w0rd wr+d");
         let mut mo = Motion {
             mo: MotionType::An(TextObject::Word),
             count: 1,
@@ -1075,7 +1075,7 @@ mod tests {
 
     #[test]
     fn txo_object_inner_word() {
-        let mut b = Rope::from_str(" word  word+ ");
+        let b = Rope::from_str(" word  word+ ");
         let mut mo = Motion {
             mo: MotionType::Inner(TextObject::Word),
             count: 1,
@@ -1092,7 +1092,7 @@ mod tests {
 
     #[test]
     fn txo_object_a_bigword() {
-        let mut b = Rope::from_str(" wor+   w0rd wr+d");
+        let b = Rope::from_str(" wor+   w0rd wr+d");
         let mut mo = Motion {
             mo: MotionType::An(TextObject::BigWord),
             count: 1,
@@ -1109,7 +1109,7 @@ mod tests {
 
     #[test]
     fn txo_object_inner_bigword() {
-        let mut b = Rope::from_str(" w--d  w--d+ ");
+        let b = Rope::from_str(" w--d  w--d+ ");
         let mut mo = Motion {
             mo: MotionType::Inner(TextObject::BigWord),
             count: 1,
@@ -1126,7 +1126,7 @@ mod tests {
 
     #[test]
     fn txo_object_a_block() {
-        let mut b = Rope::from_str("<(bl(o)ck) {\nblock\n}>");
+        let b = Rope::from_str("<(bl(o)ck) {\nblock\n}>");
         let mut mo = Motion {
             mo: MotionType::An(TextObject::Block('<')),
             count: 1,
@@ -1165,7 +1165,7 @@ mod tests {
 
     #[test]
     fn txo_object_inner_block() {
-        let mut b = Rope::from_str("<(bl(o)ck) {\nblock\n}>");
+        let b = Rope::from_str("<(bl(o)ck) {\nblock\n}>");
         let mut mo = Motion {
             mo: MotionType::Inner(TextObject::Block('<')),
             count: 1,

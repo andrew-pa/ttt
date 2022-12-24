@@ -53,7 +53,10 @@ impl super::Mode for EditMode {
                 view_state.process_normal_cmd(cmd)
             }
             Err(ParseError::UnknownCommand) | Err(ParseError::InvalidCommand) => {
-                println!("unknown/invalid command: {}", self.cmd_buffer);
+                view_state.prev_error = Some(anyhow::anyhow!(
+                    "unknown/invalid command: {}",
+                    self.cmd_buffer
+                ));
                 self.cmd_buffer.clear();
                 None
             }

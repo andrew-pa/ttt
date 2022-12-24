@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use crate::{
-    model::{Node, NodeId, Tree},
+    model::{NodeId, Tree},
     presenter::Presenter,
 };
 
@@ -10,12 +10,12 @@ use skia_safe::{
         FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, RectHeightStyle,
         RectWidthStyle, TextStyle,
     },
-    Canvas, Color4f, Font, FontMgr, FontStyle, ISize, Paint, PaintStyle, Rect,
+    Canvas, Color4f, FontMgr, Paint, PaintStyle, Rect,
 };
 
 use winit::{
     dpi::LogicalSize,
-    event::{ElementState, KeyboardInput, ModifiersState, WindowEvent},
+    event::{ElementState, ModifiersState, WindowEvent},
     event_loop::ControlFlow,
 };
 

@@ -47,7 +47,7 @@ impl super::Mode for InsertMode {
     fn process_char(
         &mut self,
         c: char,
-        mods: &winit::event::ModifiersState,
+        _mods: &winit::event::ModifiersState,
         view_state: &mut super::ViewState,
     ) -> Option<Box<dyn super::Mode>> {
         if c.is_control() && c != '\n' {

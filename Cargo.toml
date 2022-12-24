@@ -2,6 +2,7 @@
 name = "ttt"
 version = "0.1.0"
 edition = "2021"
+description = "A visual Vim-like editor for trees of text blobs"
 
 [dependencies]
 anyhow = "1"
@@ -23,3 +24,8 @@ url = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.24"
+
+[package.metadata.bundle]
+identifier = "pw.qxczv.ttt"
+version = "0.1.0"
+copyright = "Copyright (c) Andrew Palmer 2022. All rights reserved."
