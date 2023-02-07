@@ -24,8 +24,9 @@ When `ttt` loses focus it will automatically sync the current tree if it has a l
 |  h  | Move to the parent of the current node      |
 |  i  | Start inserting in current node             |
 |  e  | Start editing current node                  |
+|  c  | Insert node as a child of the current node  |
 |  o  | Insert node in parent after current node    |
-|  O  | Insert node as child of current node        |
+|  O  | Insert node in parent before current node   |
 |  x  | Cut a node onto the snip stack              |
 |  y  | Copy a node onto the snip stack             |
 |  p  | Paste the top node of the snip stack        |

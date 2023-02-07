@@ -59,7 +59,7 @@ impl View {
         let cmd_bg_paint = create_paint(Color4f::new(0.2, 0.2, 0.2, 1.0), PaintStyle::Fill);
 
         let mut font_collection = FontCollection::new();
-        font_collection.set_default_font_manager(FontMgr::new(), Some("Helvetica"));
+        font_collection.set_default_font_manager(FontMgr::new(), Some("sans"));
 
         let mut text_style = TextStyle::new();
         text_style.set_foreground_color(fg_paint_fill.clone());

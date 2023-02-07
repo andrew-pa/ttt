@@ -62,10 +62,17 @@ impl Presenter {
         self.current_root = new_root;
     }
 
-    pub fn insert_node_in_parent(&mut self, cur_node: NodeId) -> Option<NodeId> {
+    pub fn insert_node_in_parent(
+        &mut self,
+        cur_node: NodeId,
+        after_or_before: bool,
+    ) -> Option<NodeId> {
         self.tree_modified = true;
         if let Some(parent) = self.tree.node(cur_node).parent() {
-            Some(self.tree.insert_node(String::new(), parent, cur_node))
+            Some(
+                self.tree
+                    .insert_node(String::new(), parent, cur_node, after_or_before),
+            )
         } else {
             None
         }

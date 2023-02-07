@@ -75,7 +75,13 @@ impl Tree {
         id
     }
 
-    pub fn insert_node(&mut self, text: String, parent: NodeId, after: NodeId) -> NodeId {
+    pub fn insert_node(
+        &mut self,
+        text: String,
+        parent: NodeId,
+        at: NodeId,
+        after_or_before: bool,
+    ) -> NodeId {
         let id = self.next_id;
         self.next_id += 1;
         self.nodes.insert(
@@ -88,17 +94,17 @@ impl Tree {
             },
         );
         if parent != ROOT_PARENT_ID {
-            let after_ix = self.nodes[&parent]
+            let at_ix = self.nodes[&parent]
                 .children
                 .iter()
                 .enumerate()
-                .find_map(|(i, n)| if *n == after { Some(i) } else { None })
-                .expect("after is child of parent");
+                .find_map(|(i, n)| if *n == at { Some(i) } else { None })
+                .expect("at is child of parent");
             self.nodes
                 .get_mut(&parent)
                 .unwrap()
                 .children
-                .insert(after_ix + 1, id);
+                .insert(at_ix + if after_or_before { 1 } else { 0 }, id);
         }
         id
     }
@@ -161,7 +167,7 @@ impl Tree {
         after: Option<NodeId>,
     ) -> NodeId {
         let new_node = if let Some(after) = after {
-            self.insert_node(self.node(node).text.clone(), new_parent, after)
+            self.insert_node(self.node(node).text.clone(), new_parent, after, true)
         } else {
             self.add_node(self.node(node).text.clone(), new_parent)
         };

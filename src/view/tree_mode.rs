@@ -50,7 +50,7 @@ impl super::Mode for TreeMode {
                         view_state.begin_editing();
                         return Some(Box::new(EditMode::default()));
                     }
-                    VirtualKeyCode::O if mods.contains(ModifiersState::SHIFT) => {
+                    VirtualKeyCode::C => {
                         view_state.cur_node = view_state
                             .presenter
                             .insert_node_as_child(view_state.cur_node);
@@ -60,16 +60,12 @@ impl super::Mode for TreeMode {
                     VirtualKeyCode::O => {
                         if let Some(nn) = view_state
                             .presenter
-                            .insert_node_in_parent(view_state.cur_node)
+                            .insert_node_in_parent(view_state.cur_node, !mods.shift())
                         {
                             view_state.cur_node = nn;
-                        } else {
-                            view_state.cur_node = view_state
-                                .presenter
-                                .insert_node_as_child(view_state.cur_node);
+                            view_state.begin_editing();
+                            return Some(Box::new(InsertMode));
                         }
-                        view_state.begin_editing();
-                        return Some(Box::new(InsertMode));
                     }
                     VirtualKeyCode::X => {
                         let nc = view_state.presenter.model().next_child(view_state.cur_node);
@@ -95,7 +91,9 @@ impl super::Mode for TreeMode {
                     VirtualKeyCode::R => {
                         view_state.presenter.set_current_root(view_state.cur_node);
                     }
-                    VirtualKeyCode::Semicolon if mods.contains(ModifiersState::SHIFT) => {
+                    VirtualKeyCode::Colon | VirtualKeyCode::Semicolon
+                        if mods.contains(ModifiersState::SHIFT) =>
+                    {
                         view_state.begin_command_edit();
                         return Some(Box::new(CmdMode::default()));
                     }
