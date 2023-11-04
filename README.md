@@ -20,6 +20,8 @@ When `ttt` loses focus it will automatically sync the current tree if it has a l
 |-----|---------------------------------------------|
 |  j  | Move to next child (visually "down" tree)   |
 |  k  | Move to previous child (visually "up" tree) |
+|ctrl+j| Swap current child with next child (visually "down" tree)   |
+|ctrl+k| Swap current child with previous child (visually "up" tree) |
 |  l  | Move to the first child of the current node |
 |  h  | Move to the parent of the current node      |
 |  i  | Start inserting in current node             |
@@ -36,6 +38,8 @@ When `ttt` loses focus it will automatically sync the current tree if it has a l
 |  f  | toggle current node being folded (collapsed)|
 |  r  | set the current node as the current displayed root |
 |  :  | enter command mode                          |
+| esc | return to tree mode                         |
+| tab | return to edit mode (from insert mode)      |
 
 ### Command mode commands
 

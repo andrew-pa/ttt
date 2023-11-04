@@ -22,6 +22,8 @@ use winit::{
 use super::*;
 use ropey::Rope;
 
+const PAD: f32 = 6.0;
+
 pub struct View {
     font_collection: FontCollection,
     pg_style: ParagraphStyle,
@@ -31,9 +33,12 @@ pub struct View {
     edge_paint: Paint,
     active_edge_paint: Paint,
     cursor_paint: Paint,
+    inactive_cursor_paint: Paint,
     root_path_sep_style: TextStyle,
     root_path_text_style: TextStyle,
     error_style: TextStyle,
+
+    focused: bool,
 
     mods: ModifiersState,
 
@@ -56,6 +61,9 @@ impl View {
         let mut cursor_paint =
             create_paint(Color4f::new(0.9, 0.7, 0.1, 0.9), PaintStyle::StrokeAndFill);
         cursor_paint.set_stroke_width(2.0);
+        let mut inactive_cursor_paint =
+            create_paint(Color4f::new(0.9, 0.7, 0.1, 0.3), PaintStyle::StrokeAndFill);
+        inactive_cursor_paint.set_stroke_width(2.0);
         let cmd_bg_paint = create_paint(Color4f::new(0.2, 0.2, 0.2, 1.0), PaintStyle::Fill);
 
         let mut font_collection = FontCollection::new();
@@ -63,9 +71,9 @@ impl View {
 
         let mut text_style = TextStyle::new();
         text_style.set_foreground_color(fg_paint_fill.clone());
-        text_style.set_font_size(14.0);
+        text_style.set_font_size(22.0);
 
-        let root_path_font_size = 10.0;
+        let root_path_font_size = 18.0;
         let mut root_path_sep_style = TextStyle::new();
         root_path_sep_style.set_foreground_color(edge_paint.clone());
         root_path_sep_style.set_font_size(root_path_font_size);
@@ -93,7 +101,9 @@ impl View {
             edge_paint,
             active_edge_paint,
             cursor_paint,
+            inactive_cursor_paint,
             mods: ModifiersState::empty(),
+            focused: false,
             mode_just_switched: false,
             cur_node_rect: RefCell::default(),
             screen_y: RefCell::new(0.0),
@@ -117,6 +127,11 @@ impl View {
         } else {
             buf.char_to_byte(cursor_index)..buf.char_to_byte(cursor_index + 1)
         };
+        let paint = if self.focused {
+            &self.cursor_paint
+        } else {
+            &self.inactive_cursor_paint
+        };
         if let Some(rect) = paragraph
             .get_rects_for_range(ch_range, RectHeightStyle::Max, RectWidthStyle::Max)
             .first()
@@ -124,7 +139,7 @@ impl View {
             let r = rect.rect;
             match self.cur_mode.cursor_shape().unwrap() {
                 CursorShape::Block => {
-                    canvas.draw_rect(r.with_offset((cur_x, cur_y)), &self.cursor_paint);
+                    canvas.draw_rect(r.with_offset((cur_x, cur_y)), paint);
                 }
                 CursorShape::Line => {
                     let rx = if cursor_index < buf.len_chars() {
@@ -135,7 +150,7 @@ impl View {
                     canvas.draw_line(
                         (cur_x + rx, cur_y + r.top),
                         (cur_x + rx, cur_y + r.bottom),
-                        &self.cursor_paint,
+                        paint,
                     );
                 }
             }
@@ -154,7 +169,7 @@ impl View {
     ) -> (f32, f32, f32) {
         let node = model.node(node_id);
 
-        let paint = if node_id == self.state.cur_node {
+        let paint = if self.focused && node_id == self.state.cur_node {
             &self.active_edge_paint
         } else {
             &self.edge_paint
@@ -171,7 +186,7 @@ impl View {
             pg.add_text(&node.text);
         }
         let mut pg = pg.build();
-        pg.layout(canvas_size.width - cur_x - 8.0);
+        pg.layout(canvas_size.width - cur_x - PAD * 2.0);
 
         if node_id == self.state.cur_node {
             let r = Rect::from_xywh(cur_x, cur_y, pg.max_width(), pg.height());
@@ -190,23 +205,23 @@ impl View {
 
         // draw the horizontal edge line from the parent's line to this node
         canvas.draw_line(
-            (par_x - 4.0, cur_y + pg.height() / 2.0),
-            (cur_x - 4.0, cur_y + pg.height() / 2.0),
+            (par_x - PAD, cur_y + pg.height() / 2.0),
+            (cur_x - PAD, cur_y + pg.height() / 2.0),
             paint,
         );
 
         if self.state.folded_nodes.contains(&node_id) {
             // draw the vertical line from the top of this node to the bottom
-            let bottom = (cur_x - 4.0, cur_y + pg.height());
-            canvas.draw_line((cur_x - 4.0, cur_y), bottom, paint);
+            let bottom = (cur_x - PAD, cur_y + pg.height());
+            canvas.draw_line((cur_x - PAD, cur_y), bottom, paint);
 
-            canvas.draw_circle(bottom, 2.0, paint);
+            canvas.draw_circle(bottom, 3.0, paint);
 
-            (32.0, pg.height(), pg.height() / 2.0)
+            (PAD * 8.0, pg.height(), pg.height() / 2.0)
         } else {
             // draw each of the children
-            let ccur_x = cur_x + 32.0;
-            let mut ccur_y = cur_y + pg.height() + 8.0;
+            let ccur_x = cur_x + PAD * 8.0;
+            let mut ccur_y = cur_y + pg.height() + PAD * 2.0;
 
             let mut last_c_h = cur_y + pg.height();
             let mut last_c_m = 0.0;
@@ -215,15 +230,15 @@ impl View {
                     self.draw_node(canvas, model, *child, ccur_x, ccur_y, cur_x, canvas_size);
                 last_c_h = ccur_y;
                 last_c_m = m;
-                ccur_y += h + 8.0;
+                ccur_y += h + PAD * 2.0;
             }
 
-            let h = ccur_y - cur_y - 8.0;
+            let h = ccur_y - cur_y - PAD * 2.0;
 
             // draw the vertical line from the top of this node to the horizontal edge line for its last child
             canvas.draw_line(
-                (cur_x - 4.0, cur_y),
-                (cur_x - 4.0, last_c_h + last_c_m),
+                (cur_x - PAD, cur_y),
+                (cur_x - PAD, last_c_h + last_c_m),
                 paint,
             );
 
@@ -250,14 +265,14 @@ impl View {
             pg.push_style(self.pg_style.text_style());
             add_rope_to_paragraph(&mut pg, cmdline);
             let mut pg = pg.build();
-            pg.layout(canvas_size.width - 16.0);
-            let ypos = canvas_size.height - 24.0;
+            pg.layout(canvas_size.width - PAD * 4.0);
+            let ypos = canvas_size.height - PAD * 6.0;
             canvas.draw_rect(
-                Rect::from_xywh(0.0, ypos - 4.0, canvas_size.width, pg.height() + 8.0),
+                Rect::from_xywh(0.0, ypos - PAD, canvas_size.width, pg.height() + PAD * 2.0),
                 &self.cmd_bg_paint,
             );
-            pg.paint(canvas, (8.0, ypos));
-            self.draw_cursor(canvas, &pg, *cursor_index, cmdline, 8.0, ypos);
+            pg.paint(canvas, (PAD * 2.0, ypos));
+            self.draw_cursor(canvas, &pg, *cursor_index, cmdline, PAD * 2.0, ypos);
         }
     }
 
@@ -268,13 +283,13 @@ impl View {
             canvas,
             model,
             self.state.presenter.current_root(),
-            32.0,
-            32.0 + *self.screen_y.borrow(),
+            PAD * 8.0,
+            PAD * 8.0 + *self.screen_y.borrow(),
             0.0,
             canvas_size,
         );
 
-        self.draw_status_line(canvas, (8.0, 16.0), canvas_size);
+        self.draw_status_line(canvas, (PAD * 2.0, PAD * 4.0), canvas_size);
 
         self.draw_cmdline(canvas, canvas_size);
 
@@ -283,9 +298,9 @@ impl View {
             pg.push_style(&self.error_style);
             pg.add_text(&format!("error: {err}"));
             let mut pg = pg.build();
-            pg.layout(canvas_size.width - 16.0);
-            let ypos = canvas_size.height - 32.0 - pg.height();
-            pg.paint(canvas, (8.0, ypos));
+            pg.layout(canvas_size.width - PAD * 4.0);
+            let ypos = canvas_size.height - PAD * 8.0 - pg.height();
+            pg.paint(canvas, (PAD * 2.0, ypos));
         }
 
         self.update_scroll(canvas_size);
@@ -317,10 +332,15 @@ impl View {
                     self.mode_just_switched = false;
                 }
             }
-            WindowEvent::Focused(false) => match self.state.presenter.manual_sync() {
-                Ok(()) => {}
-                Err(e) => self.state.prev_error = Some(e),
-            },
+            WindowEvent::Focused(focused) => {
+                self.focused = focused;
+                if !focused {
+                    match self.state.presenter.manual_sync() {
+                        Ok(()) => {}
+                        Err(e) => self.state.prev_error = Some(e),
+                    }
+                }
+            }
             _ => {}
         }
 

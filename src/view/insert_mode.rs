@@ -1,6 +1,6 @@
-use winit::event::{ElementState, VirtualKeyCode};
+use winit::event::{ElementState, ModifiersState, VirtualKeyCode};
 
-use super::edit_mode::EditMode;
+use super::{edit_mode::EditMode, tree_mode::TreeMode};
 
 pub struct InsertMode;
 
@@ -19,7 +19,11 @@ impl super::Mode for InsertMode {
         }
         let (cursor_index, buf) = view_state.cur_edit.as_mut().unwrap();
         match input.virtual_keycode.unwrap() {
-            VirtualKeyCode::Escape => Some(Box::new(EditMode::default())),
+            VirtualKeyCode::Tab => Some(Box::new(EditMode::default())),
+            VirtualKeyCode::Escape => {
+                view_state.finish_editing();
+                Some(Box::new(TreeMode::default()))
+            }
             VirtualKeyCode::Back => {
                 if buf.len_chars() > 0 && *cursor_index > 0 {
                     buf.remove((*cursor_index - 1)..*cursor_index);
@@ -29,6 +33,14 @@ impl super::Mode for InsertMode {
             }
             VirtualKeyCode::Return => {
                 buf.insert_char(*cursor_index, '\n');
+                *cursor_index += 1;
+                None
+            }
+            VirtualKeyCode::Left => {
+                *cursor_index = cursor_index.saturating_sub(1);
+                None
+            }
+            VirtualKeyCode::Right => {
                 *cursor_index += 1;
                 None
             }

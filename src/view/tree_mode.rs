@@ -2,6 +2,7 @@ use super::{cmd_mode::CmdMode, edit_mode::EditMode, insert_mode::InsertMode, Mod
 
 use winit::event::{ElementState, KeyboardInput, ModifiersState, VirtualKeyCode};
 
+#[derive(Default)]
 pub struct TreeMode;
 
 impl super::Mode for TreeMode {

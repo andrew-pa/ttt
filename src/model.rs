@@ -52,7 +52,7 @@ impl Tree {
         self.root_id
     }
 
-    pub fn set_root_id(&mut self, id: NodeId) {
+    fn set_root_id(&mut self, id: NodeId) {
         assert_eq!(self.root_id, 0);
         self.root_id = id;
     }
