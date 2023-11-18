@@ -57,7 +57,7 @@ impl Tree {
         self.root_id = id;
     }
 
-    pub fn add_node(&mut self, text: String, parent: NodeId) -> NodeId {
+    fn create_node(&mut self, text: String, parent: NodeId) -> NodeId {
         let id = self.next_id;
         self.next_id += 1;
         self.nodes.insert(
@@ -69,8 +69,21 @@ impl Tree {
                 children: Vec::new(),
             },
         );
+        id
+    }
+
+    pub fn add_node(&mut self, text: String, parent: NodeId) -> NodeId {
+        let id = self.create_node(text, parent);
         if parent != ROOT_PARENT_ID {
             self.nodes.get_mut(&parent).unwrap().children.push(id);
+        }
+        id
+    }
+
+    pub fn add_node_at_beginning(&mut self, text: String, parent: NodeId) -> NodeId {
+        let id = self.create_node(text, parent);
+        if parent != ROOT_PARENT_ID {
+            self.nodes.get_mut(&parent).unwrap().children.insert(0, id);
         }
         id
     }
@@ -82,17 +95,7 @@ impl Tree {
         at: NodeId,
         after_or_before: bool,
     ) -> NodeId {
-        let id = self.next_id;
-        self.next_id += 1;
-        self.nodes.insert(
-            id,
-            Node {
-                id,
-                text,
-                parent,
-                children: Vec::new(),
-            },
-        );
+        let id = self.create_node(text, parent);
         if parent != ROOT_PARENT_ID {
             let at_ix = self.nodes[&parent]
                 .children

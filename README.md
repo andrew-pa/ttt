@@ -24,9 +24,11 @@ When `ttt` loses focus it will automatically sync the current tree if it has a l
 |ctrl+k| Swap current child with previous child (visually "up" tree) |
 |  l  | Move to the first child of the current node |
 |  h  | Move to the parent of the current node      |
-|  i  | Start inserting in current node             |
+|  i  | Start inserting in current node at the end  |
+|  I  | Start inserting in current node at the beginning |
 |  e  | Start editing current node                  |
-|  c  | Insert node as a child of the current node  |
+|  c  | Insert node as last child of the current node  |
+|  C  | Insert node as first child of the current node  |
 |  o  | Insert node in parent after current node    |
 |  O  | Insert node in parent before current node   |
 |  x  | Cut a node onto the snip stack              |
@@ -44,7 +46,7 @@ When `ttt` loses focus it will automatically sync the current tree if it has a l
 ### Command mode commands
 
 - `e <url>`: start editing a tree stored at `<url>`
-- `s (<url>)`: sync the current tree with the stored version, optionally setting the location url
+- `s (<url>)`: sync the current tree with the stored version, optionally setting the location URL
 - `q`: quit
 
 ## Storage

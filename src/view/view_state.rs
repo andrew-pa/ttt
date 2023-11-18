@@ -5,6 +5,7 @@ use ropey::Rope;
 use super::{motion::Command, Mode};
 use crate::{model::NodeId, presenter::Presenter, view::insert_mode::InsertMode};
 
+// TODO: should this just be part of the presenter?
 pub struct ViewState {
     pub presenter: Presenter,
     pub cur_node: NodeId,
@@ -71,11 +72,12 @@ impl ViewState {
         }
     }
 
-    pub fn begin_editing(&mut self) {
+    pub fn begin_editing(&mut self, start_at_end: bool) {
         assert!(self.cur_edit.is_none());
+        let text = &self.presenter.model().node(self.cur_node).text;
         self.cur_edit = Some((
-            0,
-            Rope::from_str(&self.presenter.model().node(self.cur_node).text),
+            if start_at_end { text.len() } else { 0 },
+            Rope::from_str(text),
         ));
     }
 

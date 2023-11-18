@@ -78,9 +78,13 @@ impl Presenter {
         }
     }
 
-    pub fn insert_node_as_child(&mut self, cur_node: NodeId) -> NodeId {
+    pub fn insert_node_as_child(&mut self, cur_node: NodeId, prepend_or_append: bool) -> NodeId {
         self.tree_modified = true;
-        self.tree.add_node(String::new(), cur_node)
+        if prepend_or_append {
+            self.tree.add_node_at_beginning(String::new(), cur_node)
+        } else {
+            self.tree.add_node(String::new(), cur_node)
+        }
     }
 
     pub fn delete_node(&mut self, cur_node: NodeId) -> Option<NodeId> {
