@@ -49,7 +49,7 @@ impl super::Mode for TreeMode {
                     }
                     VirtualKeyCode::E => {
                         view_state.begin_editing(false);
-                        return Some(Box::new(EditMode::default()));
+                        return Some(Box::<EditMode>::default());
                     }
                     VirtualKeyCode::C => {
                         view_state.cur_node = view_state
@@ -96,7 +96,7 @@ impl super::Mode for TreeMode {
                         if mods.contains(ModifiersState::SHIFT) =>
                     {
                         view_state.begin_command_edit();
-                        return Some(Box::new(CmdMode::default()));
+                        return Some(Box::<CmdMode>::default());
                     }
                     _ => {}
                 }

@@ -29,7 +29,6 @@ pub struct View {
     pg_style: ParagraphStyle,
 
     cmd_bg_paint: Paint,
-    fg_paint_fill: Paint,
     edge_paint: Paint,
     active_edge_paint: Paint,
     cursor_paint: Paint,
@@ -97,7 +96,6 @@ impl View {
             font_collection,
             pg_style,
             cmd_bg_paint,
-            fg_paint_fill,
             edge_paint,
             active_edge_paint,
             cursor_paint,
@@ -162,8 +160,7 @@ impl View {
         canvas: &mut Canvas,
         model: &Tree,
         node_id: NodeId,
-        cur_x: f32,
-        cur_y: f32,
+        cur_pos @ (cur_x, cur_y): (f32, f32),
         par_x: f32,
         canvas_size: LogicalSize<f32>,
     ) -> (f32, f32, f32) {
@@ -226,8 +223,7 @@ impl View {
             let mut last_c_h = cur_y + pg.height();
             let mut last_c_m = 0.0;
             for child in node.children.iter() {
-                let (_, h, m) =
-                    self.draw_node(canvas, model, *child, ccur_x, ccur_y, cur_x, canvas_size);
+                let (_, h, m) = self.draw_node(canvas, model, *child, cur_pos, cur_x, canvas_size);
                 last_c_h = ccur_y;
                 last_c_m = m;
                 ccur_y += h + PAD * 2.0;
@@ -283,8 +279,7 @@ impl View {
             canvas,
             model,
             self.state.presenter.current_root(),
-            PAD * 8.0,
-            PAD * 8.0 + *self.screen_y.borrow(),
+            (PAD * 8.0, PAD * 8.0 + *self.screen_y.borrow()),
             0.0,
             canvas_size,
         );

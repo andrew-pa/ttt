@@ -2,16 +2,9 @@ use winit::event::{ElementState, KeyboardInput, ModifiersState, VirtualKeyCode};
 
 use super::motion::*;
 
+#[derive(Default)]
 pub struct EditMode {
     cmd_buffer: String,
-}
-
-impl Default for EditMode {
-    fn default() -> Self {
-        Self {
-            cmd_buffer: Default::default(),
-        }
-    }
 }
 
 impl super::Mode for EditMode {
@@ -52,7 +45,7 @@ impl super::Mode for EditMode {
                 self.cmd_buffer.clear();
                 view_state.process_normal_cmd(cmd)
             }
-            Err(ParseError::UnknownCommand) | Err(ParseError::InvalidCommand) => {
+            Err(ParseError::Unknown) | Err(ParseError::Invalid) => {
                 view_state.prev_error = Some(anyhow::anyhow!(
                     "unknown/invalid command: {}",
                     self.cmd_buffer
@@ -60,7 +53,7 @@ impl super::Mode for EditMode {
                 self.cmd_buffer.clear();
                 None
             }
-            Err(ParseError::IncompleteCommand) => None,
+            Err(ParseError::Incomplete) => None,
         }
     }
 

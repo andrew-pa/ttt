@@ -159,10 +159,9 @@ impl ViewState {
             .node(self.cur_node)
             .children
             .is_empty()
+            && !self.folded_nodes.remove(&self.cur_node)
         {
-            if !self.folded_nodes.remove(&self.cur_node) {
-                self.folded_nodes.insert(self.cur_node);
-            }
+            self.folded_nodes.insert(self.cur_node);
         }
     }
 }

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::ops::Range;
 
 use anyhow::Result;
@@ -7,11 +8,11 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum ParseError {
     #[error("incomplete command")]
-    IncompleteCommand,
+    Incomplete,
     #[error("invalid command")]
-    InvalidCommand,
+    Invalid,
     #[error("unknown command")]
-    UnknownCommand,
+    Unknown,
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -288,13 +289,13 @@ impl Motion {
     ) -> Result<Motion, ParseError> {
         let first = c.next();
         if first.is_none() {
-            return Err(ParseError::IncompleteCommand);
+            return Err(ParseError::Incomplete);
         }
         let mut ch = first.unwrap();
 
         let count = if ch.is_ascii_digit() {
             let mut num = ch.to_digit(10).unwrap() as usize;
-            while let Some(dch) = c.next() {
+            for dch in c.by_ref() {
                 if let Some(d) = dch.to_digit(10) {
                     num = num * 10 + d as usize;
                 } else {
@@ -326,14 +327,14 @@ impl Motion {
                 Some('e') => MotionType::EndOfWord(Direction::Backward),
                 Some('E') => MotionType::EndOfBigWord(Direction::Backward),
                 Some(';') => MotionType::RepeatNextChar { opposite: true },
-                Some(_) => return Err(ParseError::UnknownCommand),
-                None => return Err(ParseError::IncompleteCommand),
+                Some(_) => return Err(ParseError::Unknown),
+                None => return Err(ParseError::Incomplete),
             },
             '^' => MotionType::StartOfLine,
             '$' => MotionType::EndOfLine,
             '_' => MotionType::WholeLine,
             tc if tc == 'f' || tc == 'F' || tc == 't' || tc == 'T' => MotionType::NextChar {
-                c: c.next().ok_or(ParseError::IncompleteCommand)?,
+                c: c.next().ok_or(ParseError::Incomplete)?,
                 place_before: match tc {
                     'f' => false,
                     'F' => false,
@@ -360,8 +361,8 @@ impl Motion {
                     Some('<') | Some('>') => TextObject::Block('<'),
                     Some('"') => TextObject::Block('"'),
                     Some('\'') => TextObject::Block('\''),
-                    Some(_) => return Err(ParseError::UnknownCommand),
-                    None => return Err(ParseError::IncompleteCommand),
+                    Some(_) => return Err(ParseError::Unknown),
+                    None => return Err(ParseError::Incomplete),
                 };
                 match t {
                     'i' => MotionType::Inner(obj),
@@ -372,7 +373,7 @@ impl Motion {
             ';' => MotionType::RepeatNextChar { opposite: false },
             ',' => MotionType::RepeatNextChar { opposite: true },
             c if opchar.map(|opc| opc == c).unwrap_or(false) => MotionType::WholeLine,
-            _ => return Err(ParseError::UnknownCommand),
+            _ => return Err(ParseError::Unknown),
         };
         Ok(Motion {
             count: count.unwrap_or(1),
@@ -729,7 +730,7 @@ impl Command {
             Some('p') => Ok(Command::Put { consume: true }),
             Some('P') => Ok(Command::Put { consume: false }),
             Some('r') => Ok(Command::ReplaceChar(
-                cmd.chars().nth(1).ok_or(ParseError::IncompleteCommand)?,
+                cmd.chars().nth(1).ok_or(ParseError::Incomplete)?,
             )),
             Some('x') => Ok(Command::Delete(Motion {
                 count: 1,
@@ -748,11 +749,11 @@ impl Command {
                     'd' => Ok(Command::Delete(m)),
                     'c' => Ok(Command::Change(m)),
                     'y' => Ok(Command::Copy(m)),
-                    _ => Err(ParseError::UnknownCommand),
+                    _ => Err(ParseError::Unknown),
                 }
             }
             Some(_) => Ok(Command::Move(Motion::parse(&mut cmd.chars(), None)?)),
-            None => Err(ParseError::IncompleteCommand),
+            None => Err(ParseError::Incomplete),
         }
     }
 }
@@ -762,8 +763,7 @@ mod tests {
     use super::*;
 
     fn create_line_test_buffer() -> Rope {
-        let b = Rope::from_str("abc\ndef\nghi\n");
-        b
+        Rope::from_str("abc\ndef\nghi\n")
     }
     fn create_word_test_buffer() -> Rope {
         Rope::from_str("word\nw0rd w##d ++++ word\n")
@@ -827,18 +827,16 @@ mod tests {
         assert_msg: &str,
     ) {
         for (i, cwb) in correct_ends.enumerate() {
-            let r = mo.range_without_find(&b, *cursor_index, 1);
+            let r = mo.range_without_find(b, *cursor_index, 1);
             println!("actual:");
             println!("{}", b.to_string().escape_debug());
             for c in b.chars().enumerate() {
                 if c.0 == r.end {
                     break;
+                } else if c.1.is_control() {
+                    print!("\\\\");
                 } else {
-                    if c.1.is_control() {
-                        print!("\\\\");
-                    } else {
-                        print!("-");
-                    }
+                    print!("-");
                 }
             }
             println!("^ {}", r.end);
@@ -849,12 +847,10 @@ mod tests {
                 for c in b.chars().enumerate() {
                     if c.0 == *cwb {
                         break;
+                    } else if c.1.is_control() {
+                        print!("\\\\");
                     } else {
-                        if c.1.is_control() {
-                            print!("\\\\");
-                        } else {
-                            print!("-");
-                        }
+                        print!("-");
                     }
                 }
                 println!("^ {}", *cwb);
@@ -873,7 +869,7 @@ mod tests {
         assert_msg: &str,
     ) {
         for (i, cwb) in correct_ends.enumerate() {
-            let r = mo.range_without_find(&b, *cursor_index, 1);
+            let r = mo.range_without_find(b, *cursor_index, 1);
             assert_eq!(r.end, *cwb, "{} i={}", assert_msg, i);
             *cursor_index = (r.end as isize + offset) as usize;
         }

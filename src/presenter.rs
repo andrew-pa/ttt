@@ -151,10 +151,6 @@ impl Presenter {
         self.snip_stack_strs.pop()
     }
 
-    pub fn top_snip_str(&self) -> Option<&String> {
-        self.snip_stack_strs.last()
-    }
-
     /// move the node from being a child of its parent to a sibling of its parent
     pub fn make_child_sibling(&mut self, node: usize) {
         if let Some(parent) = self.tree.node(node).parent() {
