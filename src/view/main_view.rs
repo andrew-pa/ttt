@@ -15,8 +15,8 @@ use skia_safe::{
 
 use winit::{
     dpi::LogicalSize,
-    event::{ElementState, ModifiersState, WindowEvent},
-    event_loop::ControlFlow,
+    event::{ElementState, WindowEvent},
+    keyboard::ModifiersState,
 };
 
 use super::*;
@@ -69,20 +69,20 @@ impl View {
         font_collection.set_default_font_manager(FontMgr::new(), Some("sans"));
 
         let mut text_style = TextStyle::new();
-        text_style.set_foreground_color(fg_paint_fill.clone());
+        text_style.set_foreground_paint(&fg_paint_fill);
         text_style.set_font_size(22.0);
 
         let root_path_font_size = 18.0;
         let mut root_path_sep_style = TextStyle::new();
-        root_path_sep_style.set_foreground_color(edge_paint.clone());
+        root_path_sep_style.set_foreground_paint(&edge_paint);
         root_path_sep_style.set_font_size(root_path_font_size);
         let mut root_path_text_style = TextStyle::new();
-        root_path_text_style.set_foreground_color(fg_paint_fill.clone());
+        root_path_text_style.set_foreground_paint(&fg_paint_fill);
         root_path_text_style.set_font_size(root_path_font_size);
 
         let mut error_style = TextStyle::new();
-        error_style.set_foreground_color(fg_paint_fill.clone());
-        error_style.set_background_color(create_paint(
+        error_style.set_foreground_paint(&fg_paint_fill);
+        error_style.set_background_paint(&create_paint(
             Color4f::new(1.0, 0.0, 0.0, 1.0),
             PaintStyle::Fill,
         ));
@@ -113,7 +113,7 @@ impl View {
 
     fn draw_cursor(
         &self,
-        canvas: &mut Canvas,
+        canvas: &Canvas,
         paragraph: &Paragraph,
         cursor_index: usize,
         buf: &Rope,
@@ -157,10 +157,10 @@ impl View {
 
     fn draw_node(
         &self,
-        canvas: &mut Canvas,
+        canvas: &Canvas,
         model: &Tree,
         node_id: NodeId,
-        cur_pos @ (cur_x, cur_y): (f32, f32),
+        (cur_x, cur_y): (f32, f32),
         par_x: f32,
         canvas_size: LogicalSize<f32>,
     ) -> (f32, f32, f32) {
@@ -217,19 +217,20 @@ impl View {
             (PAD * 8.0, pg.height(), pg.height() / 2.0)
         } else {
             // draw each of the children
-            let ccur_x = cur_x + PAD * 8.0;
-            let mut ccur_y = cur_y + pg.height() + PAD * 2.0;
+            let cnew_x = cur_x + PAD * 8.0;
+            let mut cnew_y = cur_y + pg.height() + PAD * 2.0;
 
             let mut last_c_h = cur_y + pg.height();
             let mut last_c_m = 0.0;
             for child in node.children.iter() {
-                let (_, h, m) = self.draw_node(canvas, model, *child, cur_pos, cur_x, canvas_size);
-                last_c_h = ccur_y;
+                let (_, h, m) =
+                    self.draw_node(canvas, model, *child, (cnew_x, cnew_y), cur_x, canvas_size);
+                last_c_h = cnew_y;
                 last_c_m = m;
-                ccur_y += h + PAD * 2.0;
+                cnew_y += h + PAD * 2.0;
             }
 
-            let h = ccur_y - cur_y - PAD * 2.0;
+            let h = cnew_y - cur_y - PAD * 2.0;
 
             // draw the vertical line from the top of this node to the horizontal edge line for its last child
             canvas.draw_line(
@@ -238,7 +239,7 @@ impl View {
                 paint,
             );
 
-            (ccur_x - cur_x, h, pg.height() / 2.0)
+            (cnew_x - cur_x, h, pg.height() / 2.0)
         }
     }
 
@@ -255,7 +256,7 @@ impl View {
         }
     }
 
-    fn draw_cmdline(&self, canvas: &mut Canvas, canvas_size: LogicalSize<f32>) {
+    fn draw_cmdline(&self, canvas: &Canvas, canvas_size: LogicalSize<f32>) {
         if let Some((cursor_index, cmdline)) = self.state.cur_cmd.as_ref() {
             let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
             pg.push_style(self.pg_style.text_style());
@@ -272,7 +273,7 @@ impl View {
         }
     }
 
-    pub fn draw(&self, canvas: &mut Canvas, canvas_size: LogicalSize<f32>) {
+    pub fn draw(&self, canvas: &Canvas, canvas_size: LogicalSize<f32>) {
         let model = self.state.presenter.model();
 
         self.draw_node(
@@ -301,15 +302,15 @@ impl View {
         self.update_scroll(canvas_size);
     }
 
-    pub fn process_event(&mut self, e: WindowEvent, control_flow: &mut ControlFlow) {
+    pub fn process_event(&mut self, e: WindowEvent) -> bool {
         match e {
-            WindowEvent::KeyboardInput { input, .. } => {
-                if self.state.prev_error.is_some() && input.state == ElementState::Pressed {
+            WindowEvent::KeyboardInput { event, .. } => {
+                if self.state.prev_error.is_some() && event.state == ElementState::Pressed {
                     self.state.prev_error = None;
                 }
                 if let Some(new_mode) =
                     self.cur_mode
-                        .process_key(&input, &self.mods, &mut self.state)
+                        .process_key(&event, &self.mods, &mut self.state)
                 {
                     self.cur_mode = new_mode;
                     self.mode_just_switched = true;
@@ -317,8 +318,8 @@ impl View {
                     self.mode_just_switched = false;
                 }
             }
-            WindowEvent::ModifiersChanged(mods) => self.mods = mods,
-            WindowEvent::ReceivedCharacter(ch) if !self.mode_just_switched => {
+            WindowEvent::ModifiersChanged(mods) => self.mods = mods.state(),
+            /*WindowEvent::ReceivedCharacter(ch) if !self.mode_just_switched => {
                 if let Some(new_mode) = self.cur_mode.process_char(ch, &self.mods, &mut self.state)
                 {
                     self.cur_mode = new_mode;
@@ -326,7 +327,7 @@ impl View {
                 } else if self.mode_just_switched {
                     self.mode_just_switched = false;
                 }
-            }
+            }*/
             WindowEvent::Focused(focused) => {
                 self.focused = focused;
                 if !focused {
@@ -339,14 +340,12 @@ impl View {
             _ => {}
         }
 
-        if self.state.presenter.should_exit() {
-            control_flow.set_exit();
-        }
+        self.state.presenter.should_exit()
     }
 
     fn draw_status_line(
         &self,
-        canvas: &mut Canvas,
+        canvas: &Canvas,
         position: (f32, f32),
         canvas_size: LogicalSize<f32>,
     ) {

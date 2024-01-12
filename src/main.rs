@@ -1,6 +1,7 @@
 use std::ffi::CString;
 use std::num::NonZeroU32;
 
+use anyhow::Context;
 use glutin::config::{Config, ConfigTemplateBuilder};
 use glutin::context::{ContextApi, ContextAttributesBuilder};
 use glutin::display::GetGlDisplay;
@@ -9,7 +10,7 @@ use glutin::surface::{SurfaceAttributesBuilder, SwapInterval, WindowSurface};
 use glutin_winit::DisplayBuilder;
 use raw_window_handle::HasRawWindowHandle;
 use skia_safe::gpu::gl::FramebufferInfo;
-use skia_safe::gpu::BackendRenderTarget;
+
 use skia_safe::Color4f;
 use skia_safe::{ColorType, Surface};
 
@@ -68,6 +69,7 @@ fn get_fb_info() -> FramebufferInfo {
     FramebufferInfo {
         fboid: fboid as u32,
         format: skia_safe::gpu::gl::Format::RGBA8.into(),
+        ..Default::default()
     }
 }
 
@@ -76,14 +78,14 @@ fn create_surface(
     size: PhysicalSize<u32>,
     num_aa_samples: usize,
 ) -> Surface {
-    let brt = BackendRenderTarget::new_gl(
+    let brt = skia_safe::gpu::backend_render_targets::make_gl(
         (size.width as i32, size.height as i32),
         Some(num_aa_samples),
         0,
         get_fb_info(),
     );
 
-    Surface::from_backend_render_target(
+    skia_safe::gpu::surfaces::wrap_backend_render_target(
         gr_context,
         &brt,
         skia_safe::gpu::SurfaceOrigin::BottomLeft,
@@ -136,7 +138,7 @@ impl Renderer {
 }
 
 fn main() -> anyhow::Result<()> {
-    let event_loop = EventLoopBuilder::new().build();
+    let event_loop = EventLoopBuilder::new().build().context("")?;
 
     #[cfg(target_os = "macos")]
     unsafe {
@@ -202,95 +204,101 @@ fn main() -> anyhow::Result<()> {
 
     let mut state = None;
     let mut renderer = None;
-    event_loop.run(move |event, window_target, control_flow| {
-        control_flow.set_wait();
-        match event {
-            Event::Resumed => {
-                let window = window.take().unwrap_or_else(|| {
-                    let window_builder = WindowBuilder::new().with_transparent(true);
-                    glutin_winit::finalize_window(window_target, window_builder, &gl_config)
+    event_loop
+        .run(move |event, window_target| {
+            window_target.set_control_flow(winit::event_loop::ControlFlow::Wait);
+            match event {
+                Event::Resumed => {
+                    let window = window.take().unwrap_or_else(|| {
+                        let window_builder = WindowBuilder::new().with_transparent(true);
+                        glutin_winit::finalize_window(window_target, window_builder, &gl_config)
+                            .unwrap()
+                    });
+
+                    let gl_window = GlWindow::new(window, &gl_config);
+
+                    // Make it current.
+                    let gl_context = not_current_gl_context
+                        .take()
                         .unwrap()
-                });
+                        .make_current(&gl_window.surface)
+                        .unwrap();
 
-                let gl_window = GlWindow::new(window, &gl_config);
+                    // The context needs to be current for the Renderer to set up shaders and
+                    // buffers. It also performs function loading, which needs a current context on
+                    // WGL.
+                    renderer.get_or_insert_with(|| {
+                        Renderer::new(
+                            &gl_config.display(),
+                            gl_window.window.inner_size(),
+                            gl_config.num_samples() as usize,
+                        )
+                    });
 
-                // Make it current.
-                let gl_context = not_current_gl_context
-                    .take()
-                    .unwrap()
-                    .make_current(&gl_window.surface)
-                    .unwrap();
+                    // Try setting vsync.
+                    if let Err(res) = gl_window.surface.set_swap_interval(
+                        &gl_context,
+                        SwapInterval::Wait(NonZeroU32::new(1).unwrap()),
+                    ) {
+                        eprintln!("Error setting vsync: {res:?}");
+                    }
 
-                // The context needs to be current for the Renderer to set up shaders and
-                // buffers. It also performs function loading, which needs a current context on
-                // WGL.
-                renderer.get_or_insert_with(|| {
-                    Renderer::new(
-                        &gl_config.display(),
-                        gl_window.window.inner_size(),
-                        gl_config.num_samples() as usize,
-                    )
-                });
-
-                // Try setting vsync.
-                if let Err(res) = gl_window
-                    .surface
-                    .set_swap_interval(&gl_context, SwapInterval::Wait(NonZeroU32::new(1).unwrap()))
-                {
-                    eprintln!("Error setting vsync: {res:?}");
+                    assert!(state.replace((gl_context, gl_window)).is_none());
                 }
+                Event::Suspended => {
+                    // This event is only raised on Android, where the backing NativeWindow for a GL
+                    // Surface can appear and disappear at any moment.
+                    println!("Android window removed");
 
-                assert!(state.replace((gl_context, gl_window)).is_none());
-            }
-            Event::Suspended => {
-                // This event is only raised on Android, where the backing NativeWindow for a GL
-                // Surface can appear and disappear at any moment.
-                println!("Android window removed");
-
-                // Destroy the GL Surface and un-current the GL Context before ndk-glue releases
-                // the window back to the system.
-                let (gl_context, _) = state.take().unwrap();
-                assert!(not_current_gl_context
-                    .replace(gl_context.make_not_current().unwrap())
-                    .is_none());
-            }
-            Event::WindowEvent { event, .. } => match event {
-                WindowEvent::Resized(size) => {
-                    if size.width != 0 && size.height != 0 {
-                        // Some platforms like EGL require resizing GL surface to update the size
-                        // Notable platforms here are Wayland and macOS, other don't require it
-                        // and the function is no-op, but it's wise to resize it for portability
-                        // reasons.
-                        if let Some((gl_context, gl_window)) = &state {
-                            gl_window.surface.resize(
-                                gl_context,
-                                NonZeroU32::new(size.width).unwrap(),
-                                NonZeroU32::new(size.height).unwrap(),
-                            );
-                            let renderer = renderer.as_mut().unwrap();
-                            renderer.resize(size);
+                    // Destroy the GL Surface and un-current the GL Context before ndk-glue releases
+                    // the window back to the system.
+                    let (gl_context, _) = state.take().unwrap();
+                    assert!(not_current_gl_context
+                        .replace(gl_context.make_not_current().unwrap())
+                        .is_none());
+                }
+                Event::WindowEvent { event, .. } => match event {
+                    WindowEvent::Resized(size) => {
+                        if size.width != 0 && size.height != 0 {
+                            // Some platforms like EGL require resizing GL surface to update the size
+                            // Notable platforms here are Wayland and macOS, other don't require it
+                            // and the function is no-op, but it's wise to resize it for portability
+                            // reasons.
+                            if let Some((gl_context, gl_window)) = &state {
+                                gl_window.surface.resize(
+                                    gl_context,
+                                    NonZeroU32::new(size.width).unwrap(),
+                                    NonZeroU32::new(size.height).unwrap(),
+                                );
+                                let renderer = renderer.as_mut().unwrap();
+                                renderer.resize(size);
+                            }
                         }
                     }
-                }
-                WindowEvent::CloseRequested => {
-                    control_flow.set_exit();
-                }
-                e => view.process_event(e, control_flow),
-            },
-            Event::RedrawEventsCleared => {
-                if let Some((gl_context, gl_window)) = &state {
-                    let renderer = renderer.as_mut().unwrap();
-                    let scale_factor = gl_window.window.scale_factor();
-                    renderer.render(
-                        scale_factor,
-                        &view,
-                        gl_window.window.inner_size().to_logical(scale_factor),
-                    );
-                    gl_window.window.request_redraw();
-                    gl_window.surface.swap_buffers(gl_context).unwrap();
-                }
+                    WindowEvent::RedrawRequested => {
+                        if let Some((gl_context, gl_window)) = &state {
+                            let renderer = renderer.as_mut().unwrap();
+                            let scale_factor = gl_window.window.scale_factor();
+                            renderer.render(
+                                scale_factor,
+                                &view,
+                                gl_window.window.inner_size().to_logical(scale_factor),
+                            );
+                            gl_window.window.request_redraw();
+                            gl_window.surface.swap_buffers(gl_context).unwrap();
+                        }
+                    }
+                    WindowEvent::CloseRequested => {
+                        window_target.exit();
+                    }
+                    e => {
+                        if view.process_event(e) {
+                            window_target.exit();
+                        }
+                    }
+                },
+                _ => (),
             }
-            _ => (),
-        }
-    })
+        })
+        .context("event loop")
 }

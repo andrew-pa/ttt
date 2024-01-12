@@ -1,4 +1,5 @@
-use winit::event::{KeyboardInput, ModifiersState};
+use winit::event::KeyEvent;
+use winit::keyboard::ModifiersState;
 
 mod cmd_mode;
 mod edit_mode;
@@ -18,19 +19,10 @@ pub enum CursorShape {
 pub trait Mode {
     fn process_key(
         &mut self,
-        input: &KeyboardInput,
+        input: &KeyEvent,
         mods: &ModifiersState,
         view_state: &mut ViewState,
     ) -> Option<Box<dyn Mode>>;
-
-    fn process_char(
-        &mut self,
-        _c: char,
-        _mods: &ModifiersState,
-        _view_state: &mut ViewState,
-    ) -> Option<Box<dyn Mode>> {
-        None
-    }
 
     fn name(&self) -> &'static str;
 

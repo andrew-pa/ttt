@@ -1,4 +1,7 @@
-use winit::event::{ElementState, VirtualKeyCode};
+use winit::{
+    event::{ElementState, KeyEvent},
+    keyboard::{Key, NamedKey},
+};
 
 use super::{edit_mode::EditMode, tree_mode::TreeMode};
 
@@ -7,40 +10,48 @@ pub struct InsertMode;
 impl super::Mode for InsertMode {
     fn process_key(
         &mut self,
-        input: &winit::event::KeyboardInput,
-        mods: &winit::event::ModifiersState,
+        input: &KeyEvent,
+        _mods: &winit::keyboard::ModifiersState,
         view_state: &mut super::ViewState,
     ) -> Option<Box<dyn super::Mode>> {
-        if !mods.is_empty()
-            || input.virtual_keycode.is_none()
-            || input.state == ElementState::Released
-        {
+        if input.state == ElementState::Released {
             return None;
         }
         let (cursor_index, buf) = view_state.cur_edit.as_mut().unwrap();
-        match input.virtual_keycode.unwrap() {
-            VirtualKeyCode::Tab => Some(Box::<EditMode>::default()),
-            VirtualKeyCode::Escape => {
+        match &input.logical_key {
+            Key::Named(NamedKey::Tab) => Some(Box::<EditMode>::default()),
+            Key::Named(NamedKey::Escape) => {
                 view_state.finish_editing();
                 Some(Box::new(TreeMode))
             }
-            VirtualKeyCode::Back => {
+            Key::Named(NamedKey::Backspace) => {
                 if buf.len_chars() > 0 && *cursor_index > 0 {
                     buf.remove((*cursor_index - 1)..*cursor_index);
                     *cursor_index -= 1;
                 }
                 None
             }
-            VirtualKeyCode::Return => {
+            Key::Named(NamedKey::Enter) => {
                 buf.insert_char(*cursor_index, '\n');
                 *cursor_index += 1;
                 None
             }
-            VirtualKeyCode::Left => {
+            Key::Named(NamedKey::Space) => {
+                buf.insert_char(*cursor_index, ' ');
+                *cursor_index += 1;
+                None
+            }
+            Key::Named(NamedKey::ArrowLeft) => {
                 *cursor_index = cursor_index.saturating_sub(1);
                 None
             }
-            VirtualKeyCode::Right => {
+            Key::Named(NamedKey::ArrowRight) => {
+                *cursor_index += 1;
+                None
+            }
+            Key::Character(c) => {
+                let (cursor_index, buf) = view_state.cur_edit.as_mut().unwrap();
+                buf.insert(*cursor_index, c.as_str());
                 *cursor_index += 1;
                 None
             }
@@ -54,20 +65,5 @@ impl super::Mode for InsertMode {
 
     fn cursor_shape(&self) -> Option<super::CursorShape> {
         Some(super::CursorShape::Line)
-    }
-
-    fn process_char(
-        &mut self,
-        c: char,
-        _mods: &winit::event::ModifiersState,
-        view_state: &mut super::ViewState,
-    ) -> Option<Box<dyn super::Mode>> {
-        if c.is_control() && c != '\n' {
-            return None;
-        }
-        let (cursor_index, buf) = view_state.cur_edit.as_mut().unwrap();
-        buf.insert_char(*cursor_index, c);
-        *cursor_index += 1;
-        None
     }
 }

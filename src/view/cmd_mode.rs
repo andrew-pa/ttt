@@ -1,4 +1,7 @@
-use winit::event::{ElementState, VirtualKeyCode};
+use winit::{
+    event::{ElementState, KeyEvent},
+    keyboard::{Key, NamedKey},
+};
 
 use super::tree_mode::TreeMode;
 
@@ -8,32 +11,35 @@ pub struct CmdMode {}
 impl super::Mode for CmdMode {
     fn process_key(
         &mut self,
-        input: &winit::event::KeyboardInput,
-        mods: &winit::event::ModifiersState,
+        input: &KeyEvent,
+        _mods: &winit::keyboard::ModifiersState,
         view_state: &mut super::ViewState,
     ) -> Option<Box<dyn super::Mode>> {
-        if !mods.is_empty()
-            || input.virtual_keycode.is_none()
-            || input.state == ElementState::Released
-        {
+        if input.state == ElementState::Released {
             return None;
         }
         let (cursor_index, buf) = view_state.cur_cmd.as_mut().unwrap();
-        match input.virtual_keycode.unwrap() {
-            VirtualKeyCode::Escape => {
+        match &input.logical_key {
+            Key::Named(NamedKey::Escape) => {
                 view_state.abort_command_edit();
                 Some(Box::new(TreeMode))
             }
-            VirtualKeyCode::Back => {
+            Key::Named(NamedKey::Backspace) => {
                 if buf.len_chars() > 0 && *cursor_index > 0 {
                     buf.remove((*cursor_index - 1)..*cursor_index);
                     *cursor_index -= 1;
                 }
                 None
             }
-            VirtualKeyCode::Return => {
+            Key::Named(NamedKey::Enter) => {
                 view_state.process_command();
                 Some(Box::new(TreeMode))
+            }
+            Key::Character(c) => {
+                let (cursor_index, buf) = view_state.cur_cmd.as_mut().unwrap();
+                buf.insert(*cursor_index, c.as_str());
+                *cursor_index += 1;
+                None
             }
             _ => None,
         }
@@ -41,21 +47,6 @@ impl super::Mode for CmdMode {
 
     fn cursor_shape(&self) -> Option<super::CursorShape> {
         Some(super::CursorShape::Line)
-    }
-
-    fn process_char(
-        &mut self,
-        c: char,
-        _mods: &winit::event::ModifiersState,
-        view_state: &mut super::ViewState,
-    ) -> Option<Box<dyn super::Mode>> {
-        if c.is_control() && c != '\n' {
-            return None;
-        }
-        let (cursor_index, buf) = view_state.cur_cmd.as_mut().unwrap();
-        buf.insert_char(*cursor_index, c);
-        *cursor_index += 1;
-        None
     }
 
     fn name(&self) -> &'static str {
