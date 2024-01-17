@@ -35,6 +35,12 @@ impl super::Mode for CmdMode {
                 view_state.process_command();
                 Some(Box::new(TreeMode))
             }
+            Key::Named(NamedKey::Space) => {
+                let (cursor_index, buf) = view_state.cur_cmd.as_mut().unwrap();
+                buf.insert_char(*cursor_index, ' ');
+                *cursor_index += 1;
+                None
+            }
             Key::Character(c) => {
                 let (cursor_index, buf) = view_state.cur_cmd.as_mut().unwrap();
                 buf.insert(*cursor_index, c.as_str());

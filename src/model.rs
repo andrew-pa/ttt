@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::io::{self, Write as IoWrite};
 
 pub type NodeId = usize;
 
@@ -243,5 +244,31 @@ impl Tree {
                 parent_node.children.swap(ix, other_ix as usize);
             }
         }
+    }
+
+    pub fn write_markdown<W: IoWrite>(&self, writer: &mut W) -> io::Result<()> {
+        self.append_markdown(writer, self.root_id, 0)
+    }
+
+    fn append_markdown<W: IoWrite>(
+        &self,
+        writer: &mut W,
+        node_id: NodeId,
+        depth: usize,
+    ) -> io::Result<()> {
+        if let Some(node) = self.nodes.get(&node_id) {
+            write!(writer, "{}- ", "  ".repeat(depth),)?;
+
+            if node.struckout {
+                writeln!(writer, "~~{}~~", node.text)?;
+            } else {
+                writeln!(writer, "{}", node.text)?;
+            }
+
+            for &child_id in &node.children {
+                self.append_markdown(writer, child_id, depth + 1)?;
+            }
+        }
+        Ok(())
     }
 }

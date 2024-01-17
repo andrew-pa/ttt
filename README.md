@@ -39,6 +39,7 @@ When `ttt` loses focus it will automatically sync the current tree if it has a l
 |alt+P| Pop a node off the snip snack and insert it as a child |
 |  f  | toggle current node being folded (collapsed)|
 |  r  | set the current node as the current displayed root |
+|  -  | toggle strikeout display for current node   |
 |  :  | enter command mode                          |
 | esc | return to tree mode                         |
 | tab | return to edit mode (from insert mode)      |
@@ -48,6 +49,7 @@ When `ttt` loses focus it will automatically sync the current tree if it has a l
 - `e <url>`: start editing a tree stored at `<url>`
 - `s (<url>)`: sync the current tree with the stored version, optionally setting the location URL
 - `q`: quit
+- `export.md <path>`: export the current tree as a Markdown file, written to `<path>`.
 
 ## Storage
 

@@ -3,7 +3,7 @@ use crate::{
     storage::{self, Storage},
 };
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 pub struct Presenter {
     tree: Tree,
@@ -203,6 +203,14 @@ impl Presenter {
             }
             Some("q") => {
                 self.should_exit = true;
+                Ok(())
+            }
+            Some("export.md") => {
+                let mut f = std::fs::File::create(parts.next().context("missing export path")?)
+                    .context("open file for export")?;
+                self.tree
+                    .write_markdown(&mut f)
+                    .context("export tree to file")?;
                 Ok(())
             }
             Some(cmd) => Err(anyhow::anyhow!("unknown command: {cmd}")),
