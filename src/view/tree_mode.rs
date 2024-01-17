@@ -95,6 +95,9 @@ impl super::Mode for TreeMode {
                     KeyCode::KeyF => {
                         view_state.toggle_folded();
                     }
+                    KeyCode::Minus => {
+                        view_state.presenter.toggle_strikeout(view_state.cur_node);
+                    }
                     KeyCode::KeyR => {
                         view_state.presenter.set_current_root(view_state.cur_node);
                     }

@@ -8,7 +8,7 @@ use crate::{
 use skia_safe::{
     textlayout::{
         FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, RectHeightStyle,
-        RectWidthStyle, TextStyle,
+        RectWidthStyle, TextDecoration, TextStyle,
     },
     Canvas, Color4f, FontMgr, Paint, PaintStyle, Rect,
 };
@@ -33,9 +33,11 @@ pub struct View {
     active_edge_paint: Paint,
     cursor_paint: Paint,
     inactive_cursor_paint: Paint,
+
     root_path_sep_style: TextStyle,
     root_path_text_style: TextStyle,
     error_style: TextStyle,
+    struck_text_style: TextStyle,
 
     focused: bool,
 
@@ -51,6 +53,7 @@ pub struct View {
 impl View {
     pub fn new(presenter: Presenter) -> View {
         let fg_paint_fill = create_paint(Color4f::new(1.0, 1.0, 0.9, 1.0), PaintStyle::Fill);
+        let fg_paint_fill_dark = create_paint(Color4f::new(0.6, 0.6, 0.54, 1.0), PaintStyle::Fill);
         let mut edge_paint =
             create_paint(Color4f::new(0.5, 0.5, 0.5, 1.0), PaintStyle::StrokeAndFill);
         edge_paint.set_stroke_width(1.0);
@@ -71,6 +74,10 @@ impl View {
         let mut text_style = TextStyle::new();
         text_style.set_foreground_paint(&fg_paint_fill);
         text_style.set_font_size(22.0);
+
+        let mut struck_text_style = text_style.clone();
+        struck_text_style.set_foreground_paint(&fg_paint_fill_dark);
+        struck_text_style.set_decoration_type(TextDecoration::LINE_THROUGH);
 
         let root_path_font_size = 18.0;
         let mut root_path_sep_style = TextStyle::new();
@@ -108,6 +115,7 @@ impl View {
             root_path_sep_style,
             root_path_text_style,
             error_style,
+            struck_text_style,
         }
     }
 
@@ -174,8 +182,10 @@ impl View {
 
         // create Skia paragraph for node text
         let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
-        pg.push_style(self.pg_style.text_style());
-        // pg.add_text(format!("{} ", node_id));
+        if node.struckout {
+            pg.push_style(&self.struck_text_style);
+        }
+        //pg.add_text(format!("{} ", node_id));
         if node_id == self.state.cur_node && self.state.cur_edit.is_some() {
             let (_, text) = self.state.cur_edit.as_ref().unwrap();
             add_rope_to_paragraph(&mut pg, text);
@@ -259,7 +269,6 @@ impl View {
     fn draw_cmdline(&self, canvas: &Canvas, canvas_size: LogicalSize<f32>) {
         if let Some((cursor_index, cmdline)) = self.state.cur_cmd.as_ref() {
             let mut pg = ParagraphBuilder::new(&self.pg_style, &self.font_collection);
-            pg.push_style(self.pg_style.text_style());
             add_rope_to_paragraph(&mut pg, cmdline);
             let mut pg = pg.build();
             pg.layout(canvas_size.width - PAD * 4.0);

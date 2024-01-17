@@ -143,6 +143,12 @@ impl Presenter {
         self.tree_modified = true;
     }
 
+    pub fn toggle_strikeout(&mut self, cur_node: usize) {
+        let node = self.tree.node_mut(cur_node);
+        node.struckout = !node.struckout;
+        self.tree_modified = true;
+    }
+
     pub fn copy_str(&mut self, s: String) {
         self.snip_stack_strs.push(s);
     }

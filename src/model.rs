@@ -11,6 +11,8 @@ pub struct Node {
     pub text: String,
     pub parent: NodeId,
     pub children: Vec<NodeId>,
+    #[serde(default)]
+    pub struckout: bool,
 }
 
 impl Node {
@@ -67,6 +69,7 @@ impl Tree {
                 text,
                 parent,
                 children: Vec::new(),
+                struckout: false,
             },
         );
         id
