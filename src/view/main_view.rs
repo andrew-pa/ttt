@@ -328,15 +328,6 @@ impl View {
                 }
             }
             WindowEvent::ModifiersChanged(mods) => self.mods = mods.state(),
-            /*WindowEvent::ReceivedCharacter(ch) if !self.mode_just_switched => {
-                if let Some(new_mode) = self.cur_mode.process_char(ch, &self.mods, &mut self.state)
-                {
-                    self.cur_mode = new_mode;
-                    self.mode_just_switched = true;
-                } else if self.mode_just_switched {
-                    self.mode_just_switched = false;
-                }
-            }*/
             WindowEvent::Focused(focused) => {
                 self.focused = focused;
                 if !focused {
